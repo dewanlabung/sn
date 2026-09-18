@@ -1,0 +1,1615 @@
+<?php
+
+/**
+ * trait -> chat
+ * 
+ * @package Sngine
+ * @author Zamblek
+ */
+
+trait ChatTrait
+{
+
+  /* ------------------------------- */
+  /* Chat */
+  /* ------------------------------- */
+
+  /**
+   * user_online
+   * 
+   * @param integer $user_id
+   * @return boolean
+   */
+  public function user_online($user_id)
+  {
+    global $db, $system;
+    /* check if the target user is a friend to the viewer */
+    if (!$this->friendship_approved($user_id)) {
+      return false;
+    }
+    /* check if the target user is online & enable the chat */
+    $get_user_status = $db->query(sprintf(
+      "SELECT COUNT(*) as count 
+      FROM users 
+      WHERE user_id = %s 
+        AND user_chat_enabled = '1' 
+        AND user_privacy_chat != 'me'
+        AND user_last_seen >= SUBTIME(NOW(), SEC_TO_TIME(%s))",
+      secure($user_id, 'int'),
+      secure($system['offline_time'], 'int', false)
+    ));
+    if ($get_user_status->fetch_assoc()['count'] == 0) {
+      return false;
+    }
+    return true;
+  }
+
+
+  /**
+   * update_user_last_seen
+   * 
+   * @return void
+   */
+  public function update_user_last_seen()
+  {
+    global $db;
+    /* init system datetime */
+    $date = init_system_datetime();
+    /* update user last seen */
+    $db->query(sprintf("UPDATE users SET user_last_seen = %s WHERE user_id = %s", secure($date), secure($this->_data['user_id'], 'int')));
+  }
+
+
+  /**
+   * get_contacts
+   * 
+   * @param array $args
+   * @return array
+   */
+  public function get_contacts($args = [])
+  {
+    global $db, $system;
+    /* prepare query */
+    $query = $args['query'] ?? '';
+    $where_query = ($query) ? sprintf(' AND (user_name LIKE %1$s OR user_firstname LIKE %1$s OR user_lastname LIKE %1$s)', secure($query, 'search')) : "";
+    /* skipped ids */
+    $skipped_array = ($args['skipped_ids']) ? array_filter($args['skipped_ids'], [$this, "filter_ids"]) : [];
+    $skipped_ids_query = ($skipped_array) ? sprintf(' AND user_id NOT IN (%s)', $this->spread_ids($skipped_array)) : "";
+    /* get contacts */
+    $contacts = [];
+    $max_results = 20;
+    $offset = $args['offset'] ?? 0;
+    $offset *= $max_results;
+    $get_contacts = $db->query(sprintf(
+      "SELECT 
+        user_id, 
+        user_name, 
+        user_firstname, 
+        user_lastname, 
+        user_gender, 
+        user_picture, 
+        user_last_seen, 
+        (user_last_seen >= SUBTIME(NOW(), SEC_TO_TIME(%s))) AS user_is_online 
+      FROM users 
+      WHERE user_id IN (%s) %s %s 
+      ORDER BY user_last_seen DESC 
+      LIMIT %s, %s",
+      secure($system['offline_time'], 'int'),
+      $this->spread_ids($this->get_friends_or_followings_ids()),
+      $where_query,
+      $skipped_ids_query,
+      secure($offset, 'int', false),
+      secure($max_results, 'int', false)
+    ));
+    if ($get_contacts->num_rows > 0) {
+      while ($contact = $get_contacts->fetch_assoc()) {
+        $contact['user_picture'] = get_picture($contact['user_picture'], $contact['user_gender']);
+        $contact['user_fullname'] = ($system['show_usernames_enabled']) ? $contact['user_name'] : $contact['user_firstname'] . " " . $contact['user_lastname'];
+        $contacts[] = $contact;
+      }
+    }
+    $has_more = (count($contacts) < $max_results) ? false : true;
+    return ['data' => $contacts, 'has_more' => $has_more];
+  }
+
+
+  /**
+   * get_conversations_new
+   * 
+   * @return array
+   */
+  public function get_conversations_new()
+  {
+    global $db;
+    $conversations = [];
+    if (!empty($_SESSION['chat_boxes_opened'])) {
+      /* make list from opened chat boxes keys (conversations ids) */
+      $chat_boxes_opened_list = $this->spread_ids($_SESSION['chat_boxes_opened']);
+      $get_conversations = $db->query(sprintf(
+        "SELECT conversations.conversation_id 
+        FROM conversations 
+        INNER JOIN conversations_users 
+          ON conversations.conversation_id = conversations_users.conversation_id 
+        WHERE conversations.node_id IS NULL 
+          AND conversations_users.user_id = %s 
+          AND conversations_users.seen = '0' 
+          AND conversations_users.deleted = '0' 
+          AND conversations.conversation_id NOT IN (%s)",
+        secure($this->_data['user_id'], 'int'),
+        $chat_boxes_opened_list
+      ));
+    } else {
+      $get_conversations = $db->query(sprintf(
+        "SELECT conversations.conversation_id 
+        FROM conversations 
+        INNER JOIN conversations_users 
+          ON conversations.conversation_id = conversations_users.conversation_id 
+        WHERE conversations.node_id IS NULL 
+          AND conversations_users.user_id = %s 
+          AND conversations_users.seen = '0' 
+          AND conversations_users.deleted = '0'",
+        secure($this->_data['user_id'], 'int')
+      ));
+    }
+    if ($get_conversations->num_rows > 0) {
+      while ($conversation = $get_conversations->fetch_assoc()) {
+        $db->query(sprintf("UPDATE conversations_users SET seen = '1' WHERE conversation_id = %s AND user_id = %s", secure($conversation['conversation_id'], 'int'), secure($this->_data['user_id'], 'int')));
+        $conversations[] = $this->get_conversation($conversation['conversation_id']);
+      }
+    }
+    return $conversations;
+  }
+
+
+  /**
+   * get_conversations
+   * 
+   * @param integer $offset
+   * @return array
+   */
+  public function get_conversations($offset = 0)
+  {
+    global $db, $system;
+    /* get conversations */
+    $conversations = [];
+    $offset *= $system['max_results'];
+    $get_conversations = $db->query(sprintf(
+      "SELECT conversations.conversation_id 
+      FROM conversations 
+      INNER JOIN conversations_users 
+        ON conversations.conversation_id = conversations_users.conversation_id 
+      WHERE conversations_users.deleted = '0' 
+        AND conversations_users.user_id = %s 
+      ORDER BY conversations.last_message_id DESC 
+      LIMIT %s, %s",
+      secure($this->_data['user_id'], 'int'),
+      secure($offset, 'int', false),
+      secure($system['max_results'], 'int', false)
+    ));
+    if ($get_conversations->num_rows > 0) {
+      while ($conversation = $get_conversations->fetch_assoc()) {
+        $conversation = $this->get_conversation($conversation['conversation_id']);
+        if ($conversation) {
+          $conversations[] = $conversation;
+        }
+      }
+    }
+    $has_more = (count($conversations) < $system['max_results']) ? false : true;
+    return ['data' => $conversations, 'has_more' => $has_more];
+  }
+
+
+  /**
+   * get_conversation
+   * 
+   * @param integer $conversation_id
+   * @return array
+   */
+  public function get_conversation($conversation_id)
+  {
+    global $db, $system;
+    $conversation = [];
+    $get_conversation = $db->query(sprintf(
+      "SELECT 
+        conversations.*, 
+        conversations_users.seen 
+      FROM conversations 
+      INNER JOIN conversations_users 
+        ON conversations.conversation_id = conversations_users.conversation_id 
+      WHERE conversations_users.user_id = %s 
+        AND conversations.conversation_id = %s",
+      secure($this->_data['user_id'], 'int'),
+      secure($conversation_id, 'int')
+    ));
+    if ($get_conversation->num_rows == 0) {
+      return false;
+    }
+    $conversation = $get_conversation->fetch_assoc();
+    /* get recipients */
+    $get_recipients = $db->query(sprintf(
+      "SELECT 
+        conversations_users.seen,
+        conversations_users.deleted,
+        conversations_users.typing,
+        users.user_id,
+        users.user_name,
+        users.user_firstname, 
+        users.user_lastname,
+        users.user_gender,
+        users.user_picture,
+        users.user_subscribed,
+        users.user_verified,
+        users.user_monetization_enabled,
+        users.user_monetization_chat_price,
+        users.user_monetization_call_price,
+        users.user_privacy_chat,
+        users.user_last_seen 
+      FROM conversations_users 
+      INNER JOIN users 
+        ON conversations_users.user_id = users.user_id 
+      WHERE conversations_users.conversation_id = %s 
+        AND conversations_users.user_id != %s",
+      secure($conversation['conversation_id'], 'int'),
+      secure($this->_data['user_id'], 'int')
+    ));
+    $recipients_num = $get_recipients->num_rows;
+    if (!$conversation['node_id'] && $recipients_num == 0) {
+      return false;
+    }
+    $i = 1;
+    $conversation['chat_price'] = 0;
+    $conversation['call_price'] = 0;
+    $conversation['paid_recipients'] = [];
+    while ($recipient = $get_recipients->fetch_assoc()) {
+      /* check if paid chat */
+      if ($system['monetization_enabled'] && $this->check_user_permission($recipient['user_id'], 'monetization_permission') && $recipient['user_monetization_enabled'] && ($recipient['user_monetization_chat_price'] > 0 || $recipient['user_monetization_call_price'] > 0)) {
+        $conversation['chat_price'] += $recipient['user_monetization_chat_price'];
+        $conversation['call_price'] += $recipient['user_monetization_call_price'];
+        $conversation['paid_recipients'][] = $recipient;
+      }
+      /* get recipient picture */
+      $recipient['user_picture'] = get_picture($recipient['user_picture'], $recipient['user_gender']);
+      /* add to conversation recipients */
+      $conversation['recipients'][] = $recipient;
+      /* prepare typing recipients */
+      if ($system['chat_typing_enabled'] && $recipient['typing']) {
+        /* check if recipient typing but offline */
+        $get_recipient_status = $db->query(sprintf("SELECT COUNT(*) as count FROM users WHERE user_id = %s AND user_last_seen >= SUBTIME(NOW(), SEC_TO_TIME(%s))", secure($recipient['user_id'], 'int'), secure($system['offline_time'], 'int', false)));
+        if ($get_recipient_status->fetch_assoc()['count'] == 0) {
+          /* recipient offline -> remove his typing status */
+          $db->query(sprintf("UPDATE conversations_users SET typing = '0' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($recipient['user_id'], 'int')));
+        } else {
+          /* recipient online -> return his typing status */
+          if ($conversation['typing_name_list']) {
+            $conversation['typing_name_list'] .= ", ";
+          }
+          $conversation['typing_name_list'] .= html_entity_decode(($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'], ENT_QUOTES);
+        }
+      }
+      /* prepare seen recipients */
+      if ($system['chat_seen_enabled'] && $recipient['seen']) {
+        if ($conversation['seen_name_list']) {
+          $conversation['seen_name_list'] .= ", ";
+        }
+        $conversation['seen_name_list'] .= html_entity_decode(($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'], ENT_QUOTES);
+      }
+      /* prepare conversation name_list */
+      $conversation['name_list'] .= html_entity_decode(($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'], ENT_QUOTES);
+      if ($i < $recipients_num) {
+        $conversation['name_list'] .= ", ";
+      }
+      $i++;
+    }
+    /* prepare conversation with multiple_recipients */
+    switch ($conversation['node_type']) {
+      case 'group':
+        /* get group */
+        $group = $this->get_group($conversation['node_id']);
+        $conversation['multiple_recipients'] = true;
+        $conversation['link'] = 'groups/' . $group['group_name'];
+        $conversation['picture'] = get_picture($group['group_picture'], 'group');
+        $conversation['name'] = __("Group") . ": " . $group['group_title'];
+        break;
+
+      case 'event':
+        /* get event */
+        $event = $this->get_event($conversation['node_id']);
+        $conversation['multiple_recipients'] = true;
+        $conversation['link'] = 'events/' . $conversation['node_id'];
+        $conversation['picture'] = get_picture($group['event_cover'], 'event');
+        $conversation['name'] = __("Event") . ": " . $event['event_title'];
+        break;
+
+      default:
+        if ($recipients_num > 1) {
+          /* multiple recipients */
+          $conversation['multiple_recipients'] = true;
+          $conversation['link'] = 'messages/' . $conversation['conversation_id'];
+          $conversation['picture_left'] = $conversation['recipients'][0]['user_picture'];
+          $conversation['picture_right'] = $conversation['recipients'][1]['user_picture'];
+          if ($recipients_num > 2) {
+            $conversation['name'] = html_entity_decode(($system['show_usernames_enabled']) ? $conversation['recipients'][0]['user_name'] : $conversation['recipients'][0]['user_firstname'], ENT_QUOTES) . ", " . html_entity_decode(($system['show_usernames_enabled']) ? $conversation['recipients'][1]['user_name'] : $conversation['recipients'][1]['user_firstname'], ENT_QUOTES) . " & " . ($recipients_num - 2) . " " . __("more");
+          } else {
+            $conversation['name'] = html_entity_decode(($system['show_usernames_enabled']) ? $conversation['recipients'][0]['user_name'] : $conversation['recipients'][0]['user_firstname'], ENT_QUOTES) . " & " . html_entity_decode(($system['show_usernames_enabled']) ? $conversation['recipients'][1]['user_name'] : $conversation['recipients'][1]['user_firstname'], ENT_QUOTES);
+          }
+        } else {
+          /* one recipient */
+          $conversation['multiple_recipients'] = false;
+          $conversation['user_id'] = $conversation['recipients'][0]['user_id'];
+          $conversation['link'] = $conversation['recipients'][0]['user_name'];
+          $conversation['picture'] = $conversation['recipients'][0]['user_picture'];
+          $conversation['name'] = html_entity_decode(($system['show_usernames_enabled']) ? $conversation['recipients'][0]['user_name'] : $conversation['recipients'][0]['user_firstname'] . " " . $conversation['recipients'][0]['user_lastname'], ENT_QUOTES);
+          $conversation['name_html'] = popover($conversation['recipients'][0]['user_id'], $conversation['recipients'][0]['user_name'], ($system['show_usernames_enabled']) ? $conversation['recipients'][0]['user_name'] : $conversation['recipients'][0]['user_firstname'] . " " . $conversation['recipients'][0]['user_lastname']);
+          $conversation['user_is_online'] = $this->user_online($conversation['recipients'][0]['user_id']);
+          $conversation['user_last_seen'] = $conversation['recipients'][0]['user_last_seen'];
+        }
+        break;
+    }
+    /* get is chatbox */
+    $conversation['is_chatbox'] = $conversation['node_id'] ? true : false;
+    /* get total number of messages */
+    $conversation['total_messages'] = $this->get_conversation_total_messages($conversation_id);
+    /* get last message */
+    $conversation['last_message'] = $this->get_conversation_message_by_id($conversation['last_message_id']);
+    /* return */
+    return $conversation;
+  }
+
+
+  /**
+   * check_mutual_conversation
+   * 
+   * @param integer $conversation_id
+   * @param integer $user_id
+   * @return array
+   */
+  public function check_mutual_conversation($conversation_id = null, $user_id = null)
+  {
+    global $db;
+    /* prepare */
+    $conversation = [];
+    /* if both not set */
+    if (!$conversation_id && !$user_id) {
+      throw new BadRequestException(__("Conversation ID or User ID is required"));
+    }
+    /* if user_id is set -> check if there is a mutual conversation */
+    if ($user_id) {
+      $mutual_conversation_id = $this->get_mutual_conversation_id((array)$user_id);
+      if ($mutual_conversation_id) {
+        /* set the conversation_id */
+        $conversation_id = $mutual_conversation_id;
+      }
+    }
+    /* get convertsation details */
+    if ($conversation_id) {
+      $conversation = $this->get_conversation($conversation_id);
+      if ($conversation) {
+        /* get conversation messages */
+        $messages_data = $this->get_conversation_messages($conversation_id);
+        $conversation['messages'] = $messages_data['messages'];
+        $conversation['has_more'] = $messages_data['has_more'];
+        /* check if last message sent by the viewer */
+        if ($conversation['seen_name_list'] && end($conversation['messages'])['user_id'] == $this->_data['user_id']) {
+          $conversation['last_seen_message_id'] = end($conversation['messages'])['message_id'];
+        }
+      }
+    }
+    /* update conversation as seen */
+    $db->query(sprintf("UPDATE conversations_users SET seen = '1' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    return $conversation;
+  }
+
+
+  /**
+   * get_mutual_conversation_id
+   * 
+   * @param array $recipients
+   * @param boolean $check_deleted
+   * @return integer
+   */
+  public function get_mutual_conversation_id($recipients, $check_deleted = false)
+  {
+    global $db;
+    $recipients_array = (array)$recipients;
+    $recipients_array = array_filter($recipients_array, [$this, "filter_ids"]);
+    if (!$recipients_array) {
+      throw new BadRequestException(__("Conversation recipients is required"));
+    }
+    $recipients_array[] = $this->_data['user_id'];
+    $recipients_list = $this->spread_ids($recipients_array);
+    $get_mutual_conversations = $db->query(sprintf('SELECT conversations.conversation_id FROM conversations_users INNER JOIN conversations ON conversations_users.conversation_id = conversations.conversation_id WHERE conversations.node_id IS NULL AND conversations_users.user_id IN (%s) GROUP BY conversations.conversation_id HAVING COUNT(conversations.conversation_id) = %s', $recipients_list, count($recipients_array)));
+    if ($get_mutual_conversations->num_rows == 0) {
+      return false;
+    }
+    while ($mutual_conversation = $get_mutual_conversations->fetch_assoc()) {
+      /* get recipients */
+      $where_statement = ($check_deleted) ? " AND deleted != '1' " : "";
+      $get_recipients = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s" . $where_statement, secure($mutual_conversation['conversation_id'], 'int')));
+      if ($get_recipients->fetch_assoc()['count'] == count($recipients_array)) {
+        return $mutual_conversation['conversation_id'];
+      }
+    }
+  }
+
+
+  /**
+   * post_conversation_message
+   * 
+   * @param array $args
+   * @return array
+   */
+  public function post_conversation_message($args = [], $from_web = false)
+  {
+    global $db, $system;
+    /* init system datetime */
+    $date = init_system_datetime();
+    /* prepare */
+    $message = $args['message'] ?? '';
+    $photo = $args['photo'] ?? '';
+    $video = $args['video'] ?? '';
+    $voice_note = $args['voice_note'] ?? '';
+    $product_post_id = $args['product_post_id'] ?? null;
+    $conversation_id = $args['conversation_id'] ?? null;
+    $recipients = $args['recipients'] ?? null;
+    /* filter photo */
+    if ($photo && $from_web) {
+      $photo = json_decode($photo);
+    }
+    if ($photo) {
+      if (is_object($photo)) {
+        if (!is_valid_upload_source($photo->source ?? null)) {
+          _error(400);
+        }
+        $photo = $photo->source;
+      } elseif (!is_valid_upload_source($photo)) {
+        _error(400);
+      }
+    }
+    /* filter video */
+    if ($video && $from_web) {
+      $video = json_decode($video);
+    }
+    if ($video) {
+      if (is_object($video)) {
+        if (!is_valid_upload_source($video->source ?? null)) {
+          _error(400);
+        }
+        $video = $video->source;
+      } elseif (!is_valid_upload_source($video)) {
+        _error(400);
+      }
+    }
+    /* filter voice note */
+    if ($voice_note && $from_web) {
+      $voice_note = json_decode($voice_note);
+    }
+    if ($voice_note) {
+      if (is_object($voice_note)) {
+        if (!is_valid_upload_source($voice_note->source ?? null)) {
+          _error(400);
+        }
+        $voice_note = $voice_note->source;
+      } elseif (!is_valid_upload_source($voice_note)) {
+        _error(400);
+      }
+    }
+    /* if message not set */
+    if (is_empty($message) && !$photo && !$video && !$voice_note && !$product_post_id) {
+      throw new BadRequestException(__("Message or Image or Video or Voice Note is required"));
+    }
+    /* check if product post shared */
+    if ($product_post_id) {
+      $post = $this->get_post($product_post_id);
+      if (!$post) {
+        throw new BadRequestException(__("Product is not exists"));
+      }
+      if ($post['post_type'] != 'product') {
+        throw new BadRequestException(__("Product post is not valid"));
+      }
+    }
+    /* if both (conversation_id & recipients) not set */
+    if (!$conversation_id && !$recipients) {
+      throw new BadRequestException(__("Conversation ID or Recipients is required"));
+    }
+    /* if conversation_id set but not numeric */
+    if ($conversation_id && !is_numeric($conversation_id)) {
+      throw new BadRequestException(__("Conversation ID must be numeric"));
+    }
+    /* if recipients not array */
+    if ($recipients) {
+      $recipients = json_decode($recipients);
+      if (!is_array($recipients)) {
+        throw new BadRequestException(__("Recipients must be an array"));
+      }
+      /* recipients must contain numeric values only */
+      $recipients = array_filter($recipients, 'is_numeric');
+      /* check blocking */
+      foreach ($recipients as $recipient) {
+        if ($this->blocked($recipient)) {
+          throw new AuthorizationException(__("You are not authorized to do this"));
+        }
+      }
+    }
+    /* check if posting the message to (new || existed) conversation */
+    if ($conversation_id == null) {
+      /* [first] check previous conversation between (viewer & recipients) */
+      $mutual_conversation = $this->get_mutual_conversation_id($recipients);
+      if (!$mutual_conversation) {
+        /* [1] there is no conversation between viewer and the recipients -> start new one */
+        /* check paid conversation */
+        $chat_price = 0;
+        $paid_recipients = [];
+        foreach ($recipients as &$recipient) {
+          $recipient_info = $this->get_user($recipient);
+          if ($system['monetization_enabled'] && $this->check_user_permission($recipient, 'monetization_permission')) {
+            if ($recipient_info['user_monetization_enabled'] && $recipient_info['user_monetization_chat_price'] > 0) {
+              $chat_price += $recipient_info['user_monetization_chat_price'];
+              $paid_recipients[] = $recipient_info;
+            }
+          }
+          $recipient = $recipient_info;
+        }
+        /* check recipients chat privacy */
+        $this->check_recipients_chat_privacy($recipients);
+        /* check paid conversation (exclude: chatbox & product post) */
+        if (!$product_post_id && $chat_price > 0) {
+          $this->wallet_chat_payment($chat_price, $paid_recipients);
+        }
+        /* insert conversation */
+        $db->query("INSERT INTO conversations (last_message_id) VALUES ('0')");
+        $conversation_id = $db->insert_id;
+        /* insert the sender (viewer) */
+        $db->query(sprintf("INSERT INTO conversations_users (conversation_id, user_id, seen) VALUES (%s, %s, '1')", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+        /* insert recipients */
+        foreach ($recipients as $_recipient) {
+          $db->query(sprintf("INSERT INTO conversations_users (conversation_id, user_id) VALUES (%s, %s)", secure($conversation_id, 'int'), secure($_recipient['user_id'], 'int')));
+        }
+      } else {
+        /* [2] there is a conversation between the viewer and the recipients */
+        /* set the conversation_id */
+        $conversation_id = $mutual_conversation;
+        /* get conversation */
+        $conversation = $this->get_conversation($conversation_id);
+        /* check recipients chat privacy */
+        $this->check_recipients_chat_privacy($conversation['recipients']);
+        /* check paid conversation (exclude: chatbox & product post) */
+        if (!$conversation['node_id'] && !$product_post_id && $conversation['chat_price'] > 0) {
+          $this->wallet_chat_payment($conversation['chat_price'], $conversation['paid_recipients']);
+        }
+      }
+    } else {
+      /* [3] post the message to -> existed conversation */
+      /* check if user authorized */
+      $conversation = $this->get_conversation($conversation_id);
+      if (!$conversation) {
+        throw new AuthorizationException(__("You are not authorized to do this"));
+      }
+      /* check recipients chat privacy (exclude: chatbox) */
+      if (!$conversation['node_type']) {
+        $this->check_recipients_chat_privacy($conversation['recipients']);
+      }
+      /* check paid conversation */
+      if (!$conversation['node_id'] && $conversation['chat_price'] > 0) {
+        $this->wallet_chat_payment($conversation['chat_price'], $conversation['paid_recipients']);
+      }
+      /* check if it's a chatbox */
+      if ($conversation['node_id']) {
+        switch ($conversation['node_type']) {
+          case 'group':
+            /* check user membership */
+            $membership = $this->check_group_membership($this->_data['user_id'], $conversation['node_id']);
+            if ($membership != "approved") {
+              throw new Exception(__("You are not authorized to do this"));
+            }
+            break;
+
+          case 'event':
+            /* check user membership */
+            $membership = $this->check_event_membership($this->_data['user_id'], $conversation['node_id']);
+            if (!$membership) {
+              throw new Exception(__("You are not authorized to do this"));
+            }
+            break;
+        }
+      }
+      foreach ($conversation['recipients'] as $recipient) {
+        /* check if the viewer is blocked by any of the recipients but not in a chatbox */
+        if (!$conversation['node_id'] && $this->blocked($recipient['user_id'])) {
+          $recipient_name = ($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'] . " " . $recipient['user_lastname'];
+          modal("MESSAGE", __("Message"), __("You aren't allowed to message") . " " . $recipient_name);
+        }
+      }
+      /* update sender (viewer) as seen and not deleted if any */
+      $db->query(sprintf("UPDATE conversations_users SET seen = '1', deleted = '0' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+      /* update recipients as not seen and not deleted if any (if not chatbox) */
+      if (!$conversation['node_id']) {
+        $db->query(sprintf("UPDATE conversations_users SET seen = '0', deleted = '0' WHERE conversation_id = %s AND user_id != %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+      }
+    }
+    /* check if user is trying to share product post again */
+    if ($product_post_id && $conversation['last_message']['product_post_id']) {
+      return;
+    }
+    /* insert message */
+    $db->query(sprintf(
+      "INSERT INTO conversations_messages (
+        conversation_id, 
+        user_id, 
+        message, 
+        image, 
+        video, 
+        voice_note, 
+        product_post_id,
+        time
+      ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+      secure($conversation_id, 'int'),
+      secure($this->_data['user_id'], 'int'),
+      secure($message),
+      secure($photo),
+      secure($video),
+      secure($voice_note),
+      ($product_post_id) ? secure($product_post_id, 'int') : 'null',
+      secure($date)
+    ));
+    $message_id = $db->insert_id;
+    /* update the conversation with last message id */
+    $db->query(sprintf("UPDATE conversations SET last_message_id = %s WHERE conversation_id = %s", secure($message_id, 'int'), secure($conversation_id, 'int')));
+    /* update sender (viewer) with last message id */
+    $db->query(sprintf("UPDATE users SET user_live_messages_lastid = %s WHERE user_id = %s", secure($message_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* get conversation */
+    $conversation = $this->get_conversation($conversation_id);
+    /* update all recipients with last message id & only offline recipient messages counter */
+    foreach ($conversation['recipients'] as $recipient) {
+      if (!$recipient['deleted']) {
+        $db->query(sprintf("UPDATE users SET user_live_messages_lastid = %s, user_live_messages_counter = user_live_messages_counter + 1 WHERE user_id = %s", secure($message_id, 'int'), secure($recipient['user_id'], 'int')));
+      }
+      /* prepare notification message if image, video or voice note */
+      if (!$message) {
+        if ($photo) {
+          $message = __("Sent a photo");
+        }
+        if ($video) {
+          $message = __("Sent a video");
+        }
+        if ($voice_note) {
+          $message = __("Sent a voice message");
+        }
+        if ($product_post_id) {
+          $message = __("Shared a product");
+        }
+      }
+      /* send notification */
+      $this->post_notification(['to_user_id' => $recipient['user_id'], 'from_user_id' => $this->_data['user_id'], 'action' => 'chat_message', 'node_url' => $conversation_id, 'message' => $message]);
+    }
+    /* update typing status of the viewer for this conversation */
+    $db->query(sprintf("UPDATE conversations_users SET typing = '0' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* remove pending uploads */
+    remove_pending_uploads([$photo, $video, $voice_note]);
+    /* return with conversation */
+    return $conversation;
+  }
+
+
+  /**
+   * post_conversation_paid_message
+   * 
+   * @param array $args
+   * @param boolean $from_web
+   * @return array
+   */
+  public function post_conversation_paid_message($args = [], $from_web = false)
+  {
+    global $db, $system;
+    /* init system datetime */
+    $date = init_system_datetime();
+    /* check monetization permission */
+    if (!$this->_data['can_monetize_content'] || !$this->_data['user_monetization_enabled']) {
+      throw new AuthorizationException(__("You don't have the permission to do this"));
+    }
+    /* prepare */
+    $message = $args['message'] ?? '';
+    $photos = $args['photos'] ?? [];
+    $video = $args['video'] ?? null;
+    $audio = $args['audio'] ?? null;
+    $file = $args['file'] ?? null;
+    $conversation_id = $args['conversation_id'] ?? null;
+    $message_price = $args['message_price'] ?? 0;
+    $paid_text = $args['paid_text'] ?? '';
+    $paid_image = $args['paid_image'] ?? '';
+    $for_adult = (isset($args['for_adult']) && ($args['for_adult'] === '1' || $args['for_adult'] === true || $args['for_adult'] === 'true')) ? '1' : '0';
+    /* filter photos */
+    if ($photos && $from_web) {
+      $photos = json_decode($photos, true);
+    }
+    if (!is_array($photos)) {
+      $photos = [];
+    }
+    foreach ($photos as &$photo) {
+      $photo = (array) $photo;
+      if (!is_valid_upload_source($photo['source'] ?? null)) {
+        _error(400);
+      }
+    }
+    unset($photo);
+    /* filter video */
+    if ($video && $from_web) {
+      $video = json_decode($video);
+    }
+    if ($video) {
+      if (!is_object($video) || !is_valid_upload_source($video->source ?? null)) {
+        _error(400);
+      }
+    }
+    /* filter audio */
+    if ($audio && $from_web) {
+      $audio = json_decode($audio);
+    }
+    if ($audio) {
+      if (!is_object($audio) || !is_valid_upload_source($audio->source ?? null)) {
+        _error(400);
+      }
+    }
+    /* filter file */
+    if ($file && $from_web) {
+      $file = json_decode($file);
+    }
+    if ($file) {
+      if (!is_object($file) || !is_valid_upload_source($file->source ?? null)) {
+        _error(400);
+      }
+    }
+    /* filter paid image */
+    if ($paid_image && !is_valid_upload_source($paid_image)) {
+      _error(400);
+    }
+    /* at least one media attachment required */
+    $has_photos = (count($photos) > 0);
+    $has_video = ($video && is_object($video));
+    $has_audio = ($audio && is_object($audio));
+    $has_file = ($file && is_object($file));
+    $media_count = ($has_photos ? 1 : 0) + ($has_video ? 1 : 0) + ($has_audio ? 1 : 0) + ($has_file ? 1 : 0);
+    if ($media_count == 0) {
+      throw new ValidationException(__("Please attach at least one media file"));
+    }
+    /* validate price */
+    if (!is_numeric($message_price) || $message_price <= 0) {
+      throw new ValidationException(__("Please enter a valid price"));
+    }
+    if ($system['monetization_max_paid_post_price'] > 0 && $message_price > $system['monetization_max_paid_post_price']) {
+      throw new ValidationException(__("The price must be less than or equal to") . " " . print_money($system['monetization_max_paid_post_price']));
+    }
+    /* validate paid text */
+    if (strlen($paid_text) > 1000) {
+      throw new ValidationException(__("Paid content description is more than 1000 characters"));
+    }
+    /* validate conversation */
+    if (!$conversation_id || !is_numeric($conversation_id)) {
+      throw new BadRequestException(__("Conversation ID must be numeric"));
+    }
+    $conversation = $this->get_conversation($conversation_id);
+    if (!$conversation) {
+      throw new AuthorizationException(__("You are not authorized to do this"));
+    }
+    /* disable in group/event chatboxes for v1 */
+    if ($conversation['node_id']) {
+      throw new AuthorizationException(__("Paid media messages are not supported in group or event chats yet"));
+    }
+    /* check recipients chat privacy */
+    $this->check_recipients_chat_privacy($conversation['recipients']);
+    /* check paid conversation */
+    if ($conversation['chat_price'] > 0) {
+      $this->wallet_chat_payment($conversation['chat_price'], $conversation['paid_recipients']);
+    }
+    foreach ($conversation['recipients'] as $recipient) {
+      if ($this->blocked($recipient['user_id'])) {
+        $recipient_name = ($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'] . " " . $recipient['user_lastname'];
+        modal("MESSAGE", __("Message"), __("You aren't allowed to message") . " " . $recipient_name);
+      }
+    }
+    /* update sender (viewer) as seen and not deleted */
+    $db->query(sprintf("UPDATE conversations_users SET seen = '1', deleted = '0' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* update recipients as not seen and not deleted */
+    $db->query(sprintf("UPDATE conversations_users SET seen = '0', deleted = '0' WHERE conversation_id = %s AND user_id != %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* insert message */
+    $db->query(sprintf(
+      "INSERT INTO conversations_messages (
+        conversation_id,
+        user_id,
+        message,
+        image,
+        video,
+        voice_note,
+        is_paid,
+        message_price,
+        paid_text,
+        paid_image,
+        for_adult,
+        time
+      ) VALUES (%s, %s, %s, '', '', '', '1', %s, %s, %s, %s, %s)",
+      secure($conversation_id, 'int'),
+      secure($this->_data['user_id'], 'int'),
+      secure($message),
+      secure($message_price, 'float'),
+      secure($paid_text),
+      secure($paid_image),
+      secure($for_adult),
+      secure($date)
+    ));
+    $message_id = $db->insert_id;
+    $pending_uploads = [];
+    if ($paid_image) {
+      $pending_uploads[] = $paid_image;
+    }
+    /* insert media rows */
+    if ($has_photos) {
+      foreach ($photos as $photo) {
+        if (!is_array($photo)) {
+          $photo = (array) $photo;
+        }
+        if (!is_valid_upload_source($photo['source'] ?? null)) {
+          _error(400);
+        }
+        $db->query(sprintf(
+          "INSERT INTO conversations_messages_media (message_id, media_type, source) VALUES (%s, 'photo', %s)",
+          secure($message_id, 'int'),
+          secure($photo['source'])
+        ));
+        $pending_uploads[] = $photo['source'];
+      }
+    }
+    if ($has_video) {
+      $db->query(sprintf(
+        "INSERT INTO conversations_messages_media (message_id, media_type, source) VALUES (%s, 'video', %s)",
+        secure($message_id, 'int'),
+        secure($video->source)
+      ));
+      $pending_uploads[] = $video->source;
+    }
+    if ($has_audio) {
+      $db->query(sprintf(
+        "INSERT INTO conversations_messages_media (message_id, media_type, source) VALUES (%s, 'audio', %s)",
+        secure($message_id, 'int'),
+        secure($audio->source)
+      ));
+      $pending_uploads[] = $audio->source;
+    }
+    if ($has_file) {
+      $db->query(sprintf(
+        "INSERT INTO conversations_messages_media (message_id, media_type, source) VALUES (%s, 'file', %s)",
+        secure($message_id, 'int'),
+        secure($file->source)
+      ));
+      $pending_uploads[] = $file->source;
+    }
+    /* update the conversation with last message id */
+    $db->query(sprintf("UPDATE conversations SET last_message_id = %s WHERE conversation_id = %s", secure($message_id, 'int'), secure($conversation_id, 'int')));
+    /* update sender (viewer) with last message id */
+    $db->query(sprintf("UPDATE users SET user_live_messages_lastid = %s WHERE user_id = %s", secure($message_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* get conversation */
+    $conversation = $this->get_conversation($conversation_id);
+    /* update all recipients with last message id & only offline recipient messages counter */
+    $notify_message = $message;
+    if (!$notify_message) {
+      $notify_message = __("Sent paid content");
+    }
+    foreach ($conversation['recipients'] as $recipient) {
+      if (!$recipient['deleted']) {
+        $db->query(sprintf("UPDATE users SET user_live_messages_lastid = %s, user_live_messages_counter = user_live_messages_counter + 1 WHERE user_id = %s", secure($message_id, 'int'), secure($recipient['user_id'], 'int')));
+      }
+      /* send notification */
+      $this->post_notification(['to_user_id' => $recipient['user_id'], 'from_user_id' => $this->_data['user_id'], 'action' => 'chat_message', 'node_url' => $conversation_id, 'message' => $notify_message]);
+    }
+    /* update typing status of the viewer for this conversation */
+    $db->query(sprintf("UPDATE conversations_users SET typing = '0' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* remove pending uploads */
+    remove_pending_uploads($pending_uploads);
+    /* return with conversation */
+    return $conversation;
+  }
+
+
+  /**
+   * get_conversation_messages
+   * 
+   * @param integer $conversation_id
+   * @param integer $offset
+   * @param integer $last_message_id
+   * @return array
+   */
+  public function get_conversation_messages($conversation_id, $offset = 0, $last_message_id = null)
+  {
+    global $db, $system;
+    /* check if user authorized to see this conversation */
+    $check_conversation = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    if ($check_conversation->fetch_assoc()['count'] == 0) {
+      throw new Exception(__("You are not authorized to view this"));
+    }
+    $offset *= $system['max_results'];
+    $messages = [];
+    if ($last_message_id !== null) {
+      /* get all messages after the last_message_id */
+      $get_messages = $db->query(sprintf(
+        "SELECT 
+          conversations_messages.*,
+          users.user_name,
+          users.user_firstname,
+          users.user_lastname,
+          users.user_gender,
+          users.user_picture,
+          users.user_subscribed,
+          users.user_verified
+        FROM conversations_messages
+        INNER JOIN users ON conversations_messages.user_id = users.user_id
+        WHERE conversations_messages.conversation_id = %s
+        AND conversations_messages.message_id > %s",
+        secure($conversation_id, 'int'),
+        secure($last_message_id, 'int')
+      ));
+    } else {
+      $get_messages = $db->query(sprintf(
+        "SELECT * FROM (
+          SELECT 
+            conversations_messages.*,
+            users.user_name,
+            users.user_firstname,
+            users.user_lastname,
+            users.user_gender,
+            users.user_picture,
+            users.user_subscribed,
+            users.user_verified
+          FROM conversations_messages
+          INNER JOIN users ON conversations_messages.user_id = users.user_id
+          WHERE conversations_messages.conversation_id = %s
+          ORDER BY conversations_messages.message_id DESC
+          LIMIT %s,%s
+        ) messages 
+        ORDER BY messages.message_id ASC",
+        secure($conversation_id, 'int'),
+        secure($offset, 'int', false),
+        secure($system['max_results'], 'int', false)
+      ));
+    }
+    while ($message = $get_messages->fetch_assoc()) {
+      $message = $this->parse_message($message);
+      $messages[] = $message;
+    }
+    $has_more = (count($messages) == $system['max_results']) ? true : false;
+    return ['messages' => $messages, 'has_more' => $has_more];
+  }
+
+
+  /**
+   * delete_conversation_message
+   * 
+   * @param integer $message_id
+   * @return void
+   */
+  public function delete_conversation_message($message_id)
+  {
+    global $db;
+    /* check if message exists and viewer is the sender */
+    $check_message = $db->query(sprintf("SELECT * FROM conversations_messages WHERE message_id = %s AND user_id = %s", secure($message_id, 'int'), secure($this->_data['user_id'], 'int')));
+    if ($check_message->num_rows == 0) {
+      throw new AuthorizationException(__("You are not authorized to do this"));
+    }
+    $message = $check_message->fetch_assoc();
+    /* cleanup paid media message files */
+    if ($message['is_paid'] == '1') {
+      $get_media = $db->query(sprintf("SELECT * FROM conversations_messages_media WHERE message_id = %s", secure($message_id, 'int')));
+      if ($get_media->num_rows > 0) {
+        while ($media = $get_media->fetch_assoc()) {
+          $files_to_delete = [$media['source']];
+          remove_pending_uploads($files_to_delete);
+          foreach ($files_to_delete as $file) {
+            if ($file) {
+              delete_uploads_file($file);
+            }
+          }
+        }
+      }
+      $db->query(sprintf("DELETE FROM conversations_messages_media WHERE message_id = %s", secure($message_id, 'int')));
+      $db->query(sprintf("DELETE FROM conversations_messages_paid WHERE message_id = %s", secure($message_id, 'int')));
+    }
+    /* delete message */
+    $db->query(sprintf("DELETE FROM conversations_messages WHERE message_id = %s", secure($message_id, 'int')));
+    /* update the conversation with last message id */
+    $db->query(sprintf(
+      "UPDATE conversations c 
+       SET c.last_message_id = COALESCE(
+         (SELECT m.message_id 
+          FROM conversations_messages m 
+          WHERE m.conversation_id = c.conversation_id 
+          ORDER BY m.message_id DESC 
+          LIMIT 1), 
+         0) 
+       WHERE c.conversation_id = %s 
+       AND c.last_message_id = %s",
+      secure($message['conversation_id'], 'int'),
+      secure($message_id, 'int')
+    ));
+    /* check if last_message_id became 0 -> delete conversation */
+    $check_last_message = $db->query(sprintf("SELECT last_message_id FROM conversations WHERE conversation_id = %s", secure($message['conversation_id'], 'int')));
+    $last_message_id = $check_last_message->fetch_assoc()['last_message_id'] ?? 0;
+    if ($last_message_id == 0) {
+      $this->delete_conversation($message['conversation_id']);
+    }
+  }
+
+
+  /**
+   * get_conversation_message_by_id
+   * 
+   * @param integer $message_id
+   * @return array
+   */
+  public function get_conversation_message_by_id($message_id, $viewer_id = null)
+  {
+    global $db;
+    $get_message = $db->query(sprintf(
+      "SELECT 
+        conversations_messages.*,
+        users.user_id,
+        users.user_name,
+        users.user_firstname,
+        users.user_lastname,
+        users.user_gender,
+        users.user_picture,
+        users.user_subscribed,
+        users.user_verified 
+      FROM conversations_messages 
+      INNER JOIN users 
+        ON conversations_messages.user_id = users.user_id 
+      WHERE conversations_messages.message_id = %s",
+      secure($message_id, 'int')
+    ));
+    $message = $get_message->fetch_assoc();
+    $message = $this->parse_message($message, $viewer_id);
+    return $message;
+  }
+
+
+  /**
+   * get_conversation_paid_message_by_id
+   * 
+   * @param integer $message_id
+   * @return array|false
+   */
+  public function get_conversation_paid_message_by_id($message_id)
+  {
+    global $db;
+    $get_message = $db->query(sprintf(
+      "SELECT 
+        conversations_messages.*,
+        users.user_id,
+        users.user_name,
+        users.user_firstname,
+        users.user_lastname,
+        users.user_gender,
+        users.user_picture,
+        users.user_subscribed,
+        users.user_verified
+      FROM conversations_messages
+      INNER JOIN users ON conversations_messages.user_id = users.user_id
+      WHERE conversations_messages.message_id = %s",
+      secure($message_id, 'int')
+    ));
+    if ($get_message->num_rows == 0) {
+      return false;
+    }
+    $message = $get_message->fetch_assoc();
+    if ($message['is_paid'] != '1') {
+      return false;
+    }
+    /* the viewer must be a participant of the conversation (webhooks run without a session) */
+    if ($this->_logged_in) {
+      $check_membership = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($message['conversation_id'], 'int'), secure($this->_data['user_id'], 'int')));
+      if ($check_membership->fetch_assoc()['count'] == 0) {
+        return false;
+      }
+    }
+    $message = $this->parse_message($message);
+    if (!$message['needs_payment']) {
+      return false;
+    }
+    return $message;
+  }
+
+
+  /**
+   * get_conversation_total_messages
+   * 
+   * @param integer $conversation_id
+   * @return integer
+   */
+  public function get_conversation_total_messages($conversation_id)
+  {
+    global $db;
+    $get_total_messages = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_messages WHERE conversation_id = %s", secure($conversation_id, 'int')));
+    return $get_total_messages->fetch_assoc()['count'];
+  }
+
+
+  /**
+   * delete_conversation
+   * 
+   * @param integer $conversation_id
+   * @return void
+   */
+  public function delete_conversation($conversation_id)
+  {
+    global $db, $system;
+    /* check if user authorized */
+    $check_conversation = $db->query(sprintf(
+      "SELECT COUNT(*) as count
+       FROM conversations_users
+       INNER JOIN conversations
+         ON conversations_users.conversation_id = conversations.conversation_id
+       WHERE conversations.node_id IS NULL
+         AND conversations.conversation_id = %s
+         AND conversations_users.user_id = %s",
+      secure($conversation_id, 'int'),
+      secure($this->_data['user_id'], 'int')
+    ));
+    if ($check_conversation->fetch_assoc()['count'] == 0) {
+      throw new AuthorizationException(__("You are not authorized to do this"));
+    }
+    if ($system['chat_permanently_delete_enabled']) {
+      /* delete conversation */
+      $db->query(sprintf("DELETE FROM conversations WHERE conversation_id = %s", secure($conversation_id, 'int')));
+      /* delete conversation users */
+      $db->query(sprintf("DELETE FROM conversations_users WHERE conversation_id = %s", secure($conversation_id, 'int')));
+      /* delete conversation messages */
+      $db->query(sprintf("DELETE FROM conversations_messages WHERE conversation_id = %s", secure($conversation_id, 'int')));
+    } else {
+      /* update typing status of the viewer for this conversation */
+      $is_typing = '0';
+      $db->query(sprintf("UPDATE conversations_users SET typing = %s WHERE conversation_id = %s AND user_id = %s", secure($is_typing), secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+      /* update conversation as deleted */
+      $db->query(sprintf("UPDATE conversations_users SET deleted = '1' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    }
+  }
+
+
+  /**
+   * leave_conversation
+   * 
+   * @param integer $conversation_id
+   * @return void
+   */
+  public function leave_conversation($conversation_id)
+  {
+    global $db;
+    /* check if user authorized */
+    $check_conversation = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    if ($check_conversation->fetch_assoc()['count'] == 0) {
+      throw new AuthorizationException(__("You are not authorized to do this"));
+    }
+    /* update typing status of the viewer for this conversation */
+    $is_typing = '0';
+    $db->query(sprintf("UPDATE conversations_users SET typing = %s WHERE conversation_id = %s AND user_id = %s", secure($is_typing), secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* update conversation as deleted */
+    $db->query(sprintf("UPDATE conversations_users SET deleted = '1' WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+  }
+
+
+  /**
+   * get_conversation_color
+   * 
+   * @param integer $conversation_id
+   * @return string
+   */
+  public function get_conversation_color($conversation_id)
+  {
+    global $db;
+    $get_conversation = $db->query(sprintf("SELECT color FROM conversations WHERE conversation_id = %s", secure($conversation_id, 'int')));
+    return $get_conversation->fetch_assoc()['color'];
+  }
+
+
+  /**
+   * set_conversation_color
+   * 
+   * @param integer $conversation_id
+   * @param string $color
+   * @return void
+   */
+  public function set_conversation_color($conversation_id, $color)
+  {
+    global $db;
+    /* check if user authorized */
+    $check_conversation = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    if ($check_conversation->fetch_assoc()['count'] == 0) {
+      throw new AuthorizationException(__("You are not authorized to do this"));
+    }
+    $db->query(sprintf("UPDATE conversations SET color = %s WHERE conversation_id = %s", secure($color), secure($conversation_id, 'int')));
+  }
+
+
+  /**
+   * update_conversation_typing_status
+   * 
+   * @param integer $conversation_id
+   * @param boolean $is_typing
+   * @return void
+   */
+  public function update_conversation_typing_status($conversation_id, $is_typing)
+  {
+    global $db, $system;
+    /* check if typing is enabled */
+    if (!$system['chat_typing_enabled']) {
+      return;
+    }
+    /* validate inputs */
+    if (!isset($conversation_id) || !isset($is_typing)) {
+      return;
+    }
+    /* check if user authorized */
+    $check_conversation = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    if ($check_conversation->fetch_assoc()['count'] == 0) {
+      return;
+    }
+    /* update typing status of the viewer for this conversation */
+    $is_typing = ($is_typing) ? '1' : '0';
+    $db->query(sprintf("UPDATE conversations_users SET typing = %s WHERE conversation_id = %s AND user_id = %s", secure($is_typing), secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+  }
+
+
+  /**
+   * update_conversation_seen_status
+   * 
+   * @param array $conversation_ids
+   * @return void
+   */
+  public function update_conversation_seen_status($conversation_ids)
+  {
+    global $db, $system;
+    /* check if seen is enabled */
+    if (!$system['chat_seen_enabled']) {
+      return;
+    }
+    /* validate inputs */
+    if (!isset($conversation_ids)) {
+      return;
+    }
+    /* check if user authorized */
+    $conversations_array = [];
+    foreach ((array)$conversation_ids as $conversation_id) {
+      $check_conversation = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+      if ($check_conversation->fetch_assoc()['count'] > 0) {
+        $conversations_array[] = $conversation_id;
+      }
+    }
+    if (!$conversations_array) return;
+    /* update seen status of the viewer to these conversation(s) */
+    $db->query(sprintf("UPDATE conversations_users SET seen = '1' WHERE conversation_id IN (%s) AND user_id = %s", $this->spread_ids($conversations_array), secure($this->_data['user_id'], 'int')));
+  }
+
+
+  /**
+   * create_chatbox
+   * 
+   * @param integer $node_id
+   * @param string $node_type
+   * @return integer
+   */
+  public function create_chatbox($node_id, $node_type)
+  {
+    global $db, $system;
+    /* insert conversation */
+    $db->query(sprintf("INSERT INTO conversations (last_message_id, node_id, node_type) VALUES ('0', %s, %s)", secure($node_id, 'int'), secure($node_type)));
+    $conversation_id = $db->insert_id;
+    /* insert the node admin (viewer) */
+    $db->query(sprintf("INSERT INTO conversations_users (conversation_id, user_id, seen) VALUES (%s, %s, '1')", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    /* return conversation_id */
+    return $conversation_id;
+  }
+
+
+  /**
+   * get_chatbox
+   * 
+   * @param integer $conversation_id
+   * @return array
+   */
+  public function get_chatbox($conversation_id)
+  {
+    global $db;
+    /* check if the viewer is already in chatbox */
+    $check_conversations_users = $db->query(sprintf("SELECT COUNT(*) as count FROM conversations_users WHERE conversation_id = %s AND user_id = %s", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    if ($check_conversations_users->fetch_assoc()['count'] == 0) {
+      /* insert the viewer */
+      $db->query(sprintf("INSERT INTO conversations_users (conversation_id, user_id, seen) VALUES (%s, %s, '1')", secure($conversation_id, 'int'), secure($this->_data['user_id'], 'int')));
+    }
+    /* get conversation */
+    $conversation = $this->get_conversation($conversation_id);
+    if ($conversation) {
+      /* get conversation messages */
+      $conversation['messages'] = $this->get_conversation_messages($conversation_id)['messages'];
+      /* return */
+      return $conversation;
+    }
+    return false;
+  }
+
+
+  /**
+   * delete_chatbox
+   * 
+   * @param integer $conversation_id
+   * @return void
+   */
+  public function delete_chatbox($conversation_id)
+  {
+    global $db;
+    /* delete conversation */
+    $db->query(sprintf("DELETE FROM conversations WHERE conversation_id = %s", secure($conversation_id, 'int')));
+    /* delete conversation users */
+    $db->query(sprintf("DELETE FROM conversations_users WHERE conversation_id = %s", secure($conversation_id, 'int')));
+    /* delete conversation messages */
+    $db->query(sprintf("DELETE FROM conversations_messages WHERE conversation_id = %s", secure($conversation_id, 'int')));
+  }
+
+
+  /**
+   * check_recipients_chat_privacy
+   * 
+   * @param array $recipients
+   * @return void
+   */
+  public function check_recipients_chat_privacy($recipients)
+  {
+    global $system;
+    /* check the viewer chat privacy */
+    if ($this->_data['user_privacy_chat'] == 'me') {
+      throw new PrivacyException(__("You set your chat privacy to no one, Go to your privacy settings to change this"));
+    }
+    foreach ($recipients as $recipient) {
+      /* check the target recipient chat privacy */
+      if ($recipient['user_privacy_chat'] == 'me' || $recipient['user_privacy_chat'] == 'friends' && !$this->friendship_approved($recipient['user_id'])) {
+        $recipient['fullname'] = ($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'] . " " . $recipient['user_lastname'];
+        throw new PrivacyException(__("You can't chat with this") . " " . $recipient['fullname']);
+      }
+      /* check the viewer chat privacy */
+      if ($this->_data['user_privacy_chat'] == 'friends' && !$this->friendship_approved($recipient['user_id'])) {
+        $recipient['fullname'] = ($system['show_usernames_enabled']) ? $recipient['user_name'] : $recipient['user_firstname'] . " " . $recipient['user_lastname'];
+        throw new PrivacyException(__("You can't chat with this") . " " . $recipient['fullname'] . " " . __("because your chat privacy is set to friends only"));
+      }
+    }
+  }
+
+
+  /**
+   * parse_message
+   * 
+   * @param array $message
+   * @return array
+   */
+  public function parse_message($message, $viewer_id = null)
+  {
+    global $system, $db;
+    /* resolve the viewer context */
+    $viewer = $this->_data;
+    $viewer_logged_in = $this->_logged_in;
+    if ($viewer_id !== null && $viewer_id != ($this->_data['user_id'] ?? null)) {
+      $fetched_viewer = $this->get_user($viewer_id);
+      if ($fetched_viewer) {
+        $fetched_viewer['user_adult'] = (get_user_age($fetched_viewer['user_birthdate']) >= 18);
+        $viewer = $fetched_viewer;
+        $viewer_logged_in = true;
+      }
+    }
+    /* prepare user data */
+    $message['user_picture'] = get_picture($message['user_picture'], $message['user_gender']);
+    $message['user_fullname'] = ($system['show_usernames_enabled']) ? $message['user_name'] : $message['user_firstname'] . " " . $message['user_lastname'];
+    /* get reactions array */
+    $message['reactions']['like'] = $message['reaction_like_count'];
+    $message['reactions']['love'] = $message['reaction_love_count'];
+    $message['reactions']['haha'] = $message['reaction_haha_count'];
+    $message['reactions']['yay'] = $message['reaction_yay_count'];
+    $message['reactions']['wow'] = $message['reaction_wow_count'];
+    $message['reactions']['sad'] = $message['reaction_sad_count'];
+    $message['reactions']['angry'] = $message['reaction_angry_count'];
+    arsort($message['reactions']);
+    /* get total reactions */
+    $message['reactions_total_count'] = $message['reaction_like_count'] + $message['reaction_love_count'] + $message['reaction_haha_count'] + $message['reaction_yay_count'] + $message['reaction_wow_count'] + $message['reaction_sad_count'] + $message['reaction_angry_count'];
+    /* format total reactions count */
+    $message['reactions_total_count_formatted'] = abbreviate_count($message['reactions_total_count']);
+    /* check if viewer [reacted] this message */
+    $message['i_react'] = false;
+    /* reaction */
+    if ($message['reactions_total_count'] > 0) {
+      $get_reaction = $db->query(sprintf("SELECT reaction FROM conversations_messages_reactions WHERE user_id = %s AND message_id = %s", secure($viewer['user_id'], 'int'), secure($message['message_id'], 'int')));
+      if ($get_reaction->num_rows > 0) {
+        $message['i_react'] = true;
+        $message['i_reaction'] = $get_reaction->fetch_assoc()['reaction'];
+      }
+    }
+    /* decode message text */
+    $message['message_orginal'] = $this->decode_emojis($message['message']);
+    $message['message_orginal'] = censored_words($message['message_orginal']);
+    $message['message_orginal_decoded'] = html_entity_decode($message['message_orginal'], ENT_QUOTES);
+    $message['message'] = $this->parse(["text" => $message['message'], "decode_emojis" => false, "decode_hashtags" => false]);
+    $message['message_decoded'] = html_entity_decode($message['message'], ENT_QUOTES);
+    /* get product post */
+    if ($message['product_post_id']) {
+      $post = $this->get_post($message['product_post_id']);
+      if ($post) {
+        $message['post'] = $post;
+      }
+    }
+    /* paid media message */
+    $message['needs_payment'] = false;
+    $message['can_get_details'] = true;
+    if ($message['is_paid'] == '1') {
+      $message['message_price'] = $message['message_price'] ?? 0;
+      $message['media'] = ['photos' => [], 'video' => null, 'audio' => null, 'file' => null];
+      $get_media = $db->query(sprintf("SELECT * FROM conversations_messages_media WHERE message_id = %s", secure($message['message_id'], 'int')));
+      if ($get_media->num_rows > 0) {
+        while ($media = $get_media->fetch_assoc()) {
+          if ($media['media_type'] == 'photo') {
+            $message['media']['photos'][] = $media;
+          } elseif ($media['media_type'] == 'video') {
+            $message['media']['video'] = $media;
+          } elseif ($media['media_type'] == 'audio') {
+            $message['media']['audio'] = $media;
+          } elseif ($media['media_type'] == 'file') {
+            $message['media']['file'] = $media;
+          }
+        }
+      }
+      /* monetization access */
+      if ($message['is_paid'] == '1' && $system['monetization_enabled']) {
+        $author = $this->get_user($message['user_id']);
+        $node_monetization_discount_enabled = $author['user_monetization_discount_enabled'];
+        $node_monetization_discount_percent = $author['user_monetization_discount_percent'];
+        if ($viewer_logged_in) {
+          if ($viewer['user_group'] == 3 && $message['user_id'] != $viewer['user_id']) {
+            if (!$this->is_user_paid_for_message($message['message_id'], $viewer['user_id'])) {
+              $message['needs_payment'] = true;
+              $message['message_price_discounted'] = ($node_monetization_discount_enabled) ? $message['message_price'] * (1 - $node_monetization_discount_percent / 100) : 0;
+            }
+          }
+        } else {
+          $message['needs_payment'] = true;
+          $message['message_price_discounted'] = ($node_monetization_discount_enabled) ? $message['message_price'] * (1 - $node_monetization_discount_percent / 100) : 0;
+        }
+      }
+      /* adult content gate */
+      $message['needs_age_verification'] = false;
+      if ($system['adult_mode'] && $message['for_adult'] == '1') {
+        if ($viewer_logged_in) {
+          if ($viewer['user_group'] == 3 && $message['user_id'] != $viewer['user_id']) {
+            if (!$viewer['user_adult']) {
+              $message['needs_age_verification'] = true;
+            } elseif ($system['verification_for_adult_content'] && !$viewer['user_verified']) {
+              $message['needs_age_verification'] = true;
+            }
+          }
+        } else {
+          $message['needs_age_verification'] = true;
+        }
+      }
+      /* set if can get full message details */
+      $message['can_get_details'] = true;
+      if ($message['needs_age_verification']) {
+        $message['can_get_details'] = false;
+      } elseif ($message['needs_payment']) {
+        $message['can_get_details'] = false;
+      }
+      /* author/admin always see full details */
+      if ($viewer_logged_in && ($message['user_id'] == $viewer['user_id'] || $viewer['user_group'] < 3)) {
+        $message['can_get_details'] = true;
+        $message['needs_payment'] = false;
+      }
+      /* strip locked media sources */
+      if (!$message['can_get_details']) {
+        $message['media'] = ['photos' => [], 'video' => null, 'audio' => null, 'file' => null];
+      }
+    }
+    return $message;
+  }
+
+
+  /**
+   * react_message
+   * 
+   * @param integer $message_id
+   * @param string $reaction
+   * @return void
+   */
+  public function react_message($message_id, $reaction)
+  {
+    global $db, $date;
+    /* check reation */
+    if (!in_array($reaction, ['like', 'love', 'haha', 'yay', 'wow', 'sad', 'angry'])) {
+      throw new BadRequestException(__("Invalid input"));
+    }
+    /* (check|get) message */
+    $get_message = $db->query(sprintf(
+      "SELECT 
+        conversations_messages.*,
+        users.user_id,
+        users.user_name,
+        users.user_firstname,
+        users.user_lastname,
+        users.user_gender,
+        users.user_picture,
+        users.user_subscribed,
+        users.user_verified 
+      FROM conversations_messages 
+      INNER JOIN users 
+        ON conversations_messages.user_id = users.user_id 
+      INNER JOIN conversations_users 
+        ON conversations_messages.conversation_id = conversations_users.conversation_id
+      WHERE conversations_messages.message_id = %s",
+      secure($message_id, 'int')
+    ));
+    if ($get_message->num_rows == 0) {
+      throw new BadRequestException(__("Message not found"));
+    }
+    $message = $get_message->fetch_assoc();
+    $message = $this->parse_message($message);
+    /* react the message */
+    if ($message['i_react']) {
+      /* remove any previous reaction */
+      $db->query(sprintf("DELETE FROM conversations_messages_reactions WHERE user_id = %s AND message_id = %s", secure($this->_data['user_id'], 'int'), secure($message_id, 'int')));
+      /* update message reaction counter */
+      $reaction_field = "reaction_" . $message['i_reaction'] . "_count";
+      $db->query(sprintf("UPDATE conversations_messages SET $reaction_field = IF($reaction_field=0,0,$reaction_field-1) WHERE message_id = %s", secure($message_id, 'int')));
+    }
+    $db->query(sprintf("INSERT INTO conversations_messages_reactions (user_id, message_id, reaction, reaction_time) VALUES (%s, %s, %s, %s)", secure($this->_data['user_id'], 'int'), secure($message_id, 'int'), secure($reaction), secure($date)));
+    $reaction_id = $db->insert_id;
+    /* update message reaction counter */
+    $reaction_field = "reaction_" . $reaction . "_count";
+    $db->query(sprintf("UPDATE conversations_messages SET $reaction_field = $reaction_field + 1 WHERE message_id = %s", secure($message_id, 'int')));
+  }
+
+
+  /**
+   * unreact_message
+   * 
+   * @param integer $message_id
+   * @param string $reaction
+   * @return void
+   */
+  public function unreact_message($message_id, $reaction)
+  {
+    global $db;
+    /* check reation */
+    if (!in_array($reaction, ['like', 'love', 'haha', 'yay', 'wow', 'sad', 'angry'])) {
+      throw new BadRequestException(__("Invalid input"));
+    }
+    /* (check|get) message */
+    $get_message = $db->query(sprintf(
+      "SELECT 
+        conversations_messages.*,
+        users.user_id,
+        users.user_name,
+        users.user_firstname,
+        users.user_lastname,
+        users.user_gender,
+        users.user_picture,
+        users.user_subscribed,
+        users.user_verified 
+      FROM conversations_messages 
+      INNER JOIN users 
+        ON conversations_messages.user_id = users.user_id 
+      INNER JOIN conversations_users 
+        ON conversations_messages.conversation_id = conversations_users.conversation_id
+      WHERE conversations_messages.message_id = %s",
+      secure($message_id, 'int')
+    ));
+    if ($get_message->num_rows == 0) {
+      throw new BadRequestException(__("Message not found"));
+    }
+    $message = $get_message->fetch_assoc();
+    $message = $this->parse_message($message);
+    /* unreact the message */
+    if ($message['i_react']) {
+      $db->query(sprintf("DELETE FROM conversations_messages_reactions WHERE user_id = %s AND message_id = %s", secure($this->_data['user_id'], 'int'), secure($message_id, 'int')));
+      /* update message reaction counter */
+      $reaction_field = "reaction_" . $message['i_reaction'] . "_count";
+      $db->query(sprintf("UPDATE conversations_messages SET $reaction_field = IF($reaction_field=0,0,$reaction_field-1) WHERE message_id = %s", secure($message_id, 'int')));
+    }
+  }
+}
