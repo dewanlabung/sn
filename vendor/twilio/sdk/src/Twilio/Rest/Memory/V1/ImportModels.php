@@ -84,16 +84,10 @@ class ColumnMappingItem implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'columnName' => $this->columnName,
+            'traitGroup' => $this->traitGroup,
+            'traitName' => $this->traitName
         ];
-        if (isset($this->columnName)) {
-            $jsonString['columnName'] = $this->columnName;
-        }
-        if (isset($this->traitGroup)) {
-            $jsonString['traitGroup'] = $this->traitGroup;
-        }
-        if (isset($this->traitName)) {
-            $jsonString['traitName'] = $this->traitName;
-        }
         return $jsonString;
     }
 }
@@ -122,16 +116,10 @@ class CreateProfilesImportV2Request implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'filename' => $this->filename,
+            'fileSize' => $this->fileSize,
+            'columnMappings' => $this->columnMappings
         ];
-        if (isset($this->filename)) {
-            $jsonString['filename'] = $this->filename;
-        }
-        if (isset($this->fileSize)) {
-            $jsonString['fileSize'] = $this->fileSize;
-        }
-        if (isset($this->columnMappings)) {
-            $jsonString['columnMappings'] = $this->columnMappings;
-        }
         return $jsonString;
     }
 }

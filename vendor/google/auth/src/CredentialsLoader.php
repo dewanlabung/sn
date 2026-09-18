@@ -168,11 +168,7 @@ abstract class CredentialsLoader implements
 
         if ($jsonKey['type'] == 'service_account') {
             // Do not pass $defaultScope to ServiceAccountCredentials
-            return new ServiceAccountCredentials(
-                $scope,
-                $jsonKey,
-                enableRegionalAccessBoundary: $enableRegionalAccessBoundary
-            );
+            return new ServiceAccountCredentials($scope, $jsonKey, enableRegionalAccessBoundary: $enableRegionalAccessBoundary);
         }
 
         if ($jsonKey['type'] == 'authorized_user') {

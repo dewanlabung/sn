@@ -11,7 +11,6 @@ use Brick\Math\Exception\MathException;
 use Brick\Math\Exception\NegativeNumberException;
 use Brick\Math\Exception\NoInverseException;
 use Brick\Math\Exception\NumberFormatException;
-use Brick\Math\Exception\PlatformException;
 use Brick\Math\Exception\RandomSourceException;
 use Brick\Math\Exception\RoundingNecessaryException;
 use Brick\Math\Internal\Calculator;
@@ -128,13 +127,7 @@ final readonly class BigInteger extends BigNumber
 
         $pattern = '/[^' . substr(Calculator::ALPHABET, 0, $base) . ']/i';
 
-        $result = preg_match($pattern, $number, $matches);
-
-        if ($result === false) {
-            throw PlatformException::pcreFailure();
-        }
-
-        if ($result === 1) {
+        if (preg_match($pattern, $number, $matches) === 1) {
             throw NumberFormatException::charNotValidInBase($matches[0], $base);
         }
 
@@ -182,13 +175,7 @@ final readonly class BigInteger extends BigNumber
 
         $pattern = '/[^' . preg_quote($alphabet, '/') . ']/';
 
-        $result = preg_match($pattern, $number, $matches);
-
-        if ($result === false) {
-            throw PlatformException::pcreFailure();
-        }
-
-        if ($result === 1) {
+        if (preg_match($pattern, $number, $matches) === 1) {
             throw NumberFormatException::charNotInAlphabet($matches[0]);
         }
 
@@ -268,7 +255,7 @@ final readonly class BigInteger extends BigNumber
         $byteLength = intdiv($bitCount - 1, 8) + 1;
 
         $extraBits = ($byteLength * 8 - $bitCount);
-        $bitmask = chr(0xFF >> $extraBits); // @phpstan-ignore argument.type
+        $bitmask = chr(0xFF >> $extraBits);
 
         $randomBytes = self::randomBytes($byteLength, $randomBytesGenerator);
         $randomBytes[0] = $randomBytes[0] & $bitmask;
@@ -385,7 +372,7 @@ final readonly class BigInteger extends BigNumber
     {
         $result = BigInteger::of($a)->abs();
 
-        $n = array_map(BigInteger::of(...), $n);
+        $n = array_map(BigInteger::of(...), $n); // @phpstan-ignore possiblyImpure.functionCall
 
         foreach ($n as $next) {
             $result = $result->gcd($next);
@@ -414,7 +401,7 @@ final readonly class BigInteger extends BigNumber
     {
         $result = BigInteger::of($a)->abs();
 
-        $n = array_map(BigInteger::of(...), $n);
+        $n = array_map(BigInteger::of(...), $n); // @phpstan-ignore possiblyImpure.functionCall
 
         foreach ($n as $next) {
             $result = $result->lcm($next);
@@ -905,7 +892,6 @@ final readonly class BigInteger extends BigNumber
         //   - HalfUp, HalfCeiling => $cmp >= 0
         //   - HalfDown, HalfFloor => $cmp > 0
         //   - HalfEven => $cmp > 0 || ($cmp === 0 && $sqrt % 2 === 1)
-        //   - HalfOdd => $cmp > 0 || ($cmp === 0 && $sqrt % 2 === 0)
         // But 2*remainder is always even and 2*s + 1 is always odd, so $cmp is never zero.
         // Therefore, all Half* modes simplify to:
         if ($cmp > 0) {
@@ -979,7 +965,7 @@ final readonly class BigInteger extends BigNumber
         } else {
             // Half* modes: increment iff |$this| > (|truncated| + 0.5)^n, equivalently
             // 2^n * |$this| > (2*|truncated| + 1)^n. The rhs is odd while the lhs is even
-            // (n ≥ 2 here, so 2^n is even), so a midpoint tie is impossible and all six
+            // (n ≥ 2 here, so 2^n is even), so a midpoint tie is impossible and all five
             // Half* modes collapse to the same comparison.
             $absValue = $calculator->abs($this->value);
             $absTruncated = $calculator->abs($truncatedRoot);
@@ -1336,11 +1322,6 @@ final readonly class BigInteger extends BigNumber
      * The string will contain the minimum number of bytes required to represent this BigInteger, including a sign bit
      * if `$signed` is true.
      *
-     * Note that in signed mode, a positive number whose most significant byte is 0x80 or greater gains an extra leading
-     * 0x00 byte, so that its first bit is not interpreted as a sign bit: for example, 128 converts to "\x00\x80" when
-     * signed, and to "\x80" when unsigned. Callers that require fixed-width unsigned output, such as cryptographic
-     * code, should use `$signed = false`.
-     *
      * This representation is compatible with the `fromBytes()` factory method, as long as the `$signed` flags match.
      *
      * @param bool $signed Whether to output a signed number in two's-complement representation with a leading sign bit.
@@ -1430,10 +1411,12 @@ final readonly class BigInteger extends BigNumber
      */
     public function __unserialize(array $data): void
     {
+        /** @phpstan-ignore isset.initializedProperty */
         if (isset($this->value)) {
             throw new LogicException('__unserialize() is an internal function, it must not be called directly.');
         }
 
+        /** @phpstan-ignore deadCode.unreachable */
         $this->value = $data['value'];
     }
 
@@ -1441,12 +1424,6 @@ final readonly class BigInteger extends BigNumber
     protected static function from(BigNumber $number): static
     {
         return $number->toBigInteger();
-    }
-
-    #[Override]
-    protected function digitCount(): int
-    {
-        return strlen($this->value) - (int) ($this->value[0] === '-');
     }
 
     /**
@@ -1459,7 +1436,9 @@ final readonly class BigInteger extends BigNumber
      */
     private static function randomBytes(int $byteLength, ?callable $randomBytesGenerator): string
     {
-        $randomBytesGenerator ??= random_bytes(...);
+        if ($randomBytesGenerator === null) {
+            $randomBytesGenerator = random_bytes(...);
+        }
 
         try {
             $randomBytes = $randomBytesGenerator($byteLength);

@@ -50,13 +50,9 @@ class Identifier implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'idType' => $this->idType,
+            'value' => $this->value
         ];
-        if (isset($this->idType)) {
-            $jsonString['idType'] = $this->idType;
-        }
-        if (isset($this->value)) {
-            $jsonString['value'] = $this->value;
-        }
         return $jsonString;
     }
 }

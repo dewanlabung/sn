@@ -88,10 +88,8 @@ class KnowledgeV1ServiceCreatePolicyRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'policy_details' => $this->policyDetails
         ];
-        if (isset($this->policyDetails)) {
-            $jsonString['policy_details'] = $this->policyDetails;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }
@@ -141,13 +139,9 @@ class KnowledgeV1ServiceCreateKnowledgeRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'name' => $this->name,
+            'type' => $this->type
         ];
-        if (isset($this->name)) {
-            $jsonString['name'] = $this->name;
-        }
-        if (isset($this->type)) {
-            $jsonString['type'] = $this->type;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }

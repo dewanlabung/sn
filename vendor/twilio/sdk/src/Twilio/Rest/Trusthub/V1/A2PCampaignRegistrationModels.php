@@ -142,10 +142,8 @@ class TrusthubV1A2pCampaignRegistrationRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'a2pBrandRegistrationSid' => $this->a2pBrandRegistrationSid
         ];
-        if (isset($this->a2pBrandRegistrationSid)) {
-            $jsonString['a2pBrandRegistrationSid'] = $this->a2pBrandRegistrationSid;
-        }
         if (isset($this->messagingServiceSid)) {
             $jsonString['messagingServiceSid'] = $this->messagingServiceSid;
         }

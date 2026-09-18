@@ -85,10 +85,8 @@ class TraitGroupRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'displayName' => $this->displayName
         ];
-        if (isset($this->displayName)) {
-            $jsonString['displayName'] = $this->displayName;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }
@@ -158,13 +156,9 @@ class TraitGroup implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'displayName' => $this->displayName,
+            'version' => $this->version
         ];
-        if (isset($this->displayName)) {
-            $jsonString['displayName'] = $this->displayName;
-        }
-        if (isset($this->version)) {
-            $jsonString['version'] = $this->version;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }

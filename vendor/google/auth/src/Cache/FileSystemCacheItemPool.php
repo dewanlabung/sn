@@ -59,9 +59,7 @@ class FileSystemCacheItemPool implements CacheItemPoolInterface
     public function getItem(string $key): CacheItemInterface
     {
         if (!$this->validKey($key)) {
-            throw new InvalidArgumentException(
-                'The key \'' . $key . '\' is not valid. The key should follow the pattern |^[a-zA-Z0-9_\.! ]+$|'
-            );
+            throw new InvalidArgumentException("The key '$key' is not valid. The key should follow the pattern |^[a-zA-Z0-9_\.! ]+$|");
         }
 
         $item = new TypedItem($key);
@@ -168,9 +166,7 @@ class FileSystemCacheItemPool implements CacheItemPoolInterface
     public function deleteItem(string $key): bool
     {
         if (!$this->validKey($key)) {
-            throw new InvalidArgumentException(
-                'The key \'' . $key . '\' is not valid. The key should follow the pattern |^[a-zA-Z0-9_\.! ]+$|'
-            );
+            throw new InvalidArgumentException("The key '$key' is not valid. The key should follow the pattern |^[a-zA-Z0-9_\.! ]+$|");
         }
 
         $itemPath = $this->cacheFilePath($key);

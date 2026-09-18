@@ -233,14 +233,6 @@ class ResumableUploadClient
         $granularityHeader = $response->getHeaderLine('X-Goog-Upload-Chunk-Granularity');
         $state->chunkGranularity = !empty($granularityHeader) ? (int) $granularityHeader : 1;
         $statusHeader = $response->getHeaderLine('X-Goog-Upload-Status');
-        if (empty($statusHeader)) {
-            // Missing X-Goog-Upload-Status header on Start is a Category 1 transient error
-            throw new ApiException(
-                'Missing X-Goog-Upload-Status header in response to start command.',
-                503,
-                ApiStatus::UNAVAILABLE
-            );
-        }
         if ($statusHeader === 'final') {
             $this->finalResponse = $response;
             return self::PHASE_DONE;
@@ -281,14 +273,7 @@ class ResumableUploadClient
             );
         }
 
-        $statusHeader = $response->getHeaderLine('X-Goog-Upload-Status');
-        if (empty($statusHeader)) {
-            // Category 2: Retriable With Modification
-            // If this header is missing, transition to recovery even if status is 200.
-            return self::PHASE_RECOVERY;
-        }
-
-        if ($statusHeader === 'final') {
+        if ($response->getHeaderLine('X-Goog-Upload-Status') === 'final') {
             $this->finalResponse = $response;
             return self::PHASE_DONE;
         }
@@ -311,16 +296,6 @@ class ResumableUploadClient
         );
         $statusCode = $response->getStatusCode();
         if ($statusCode === 200) {
-            $statusHeader = $response->getHeaderLine('X-Goog-Upload-Status');
-            if (empty($statusHeader)) {
-                // Category 3: For query command, missing status header is an unrecoverable error
-                throw new ApiException(
-                    'Missing X-Goog-Upload-Status header in recovery query response.',
-                    $statusCode,
-                    ApiStatus::DATA_LOSS
-                );
-            }
-
             $serverOffsetStr = $response->getHeaderLine('X-Goog-Upload-Size-Received');
             $serverOffset = !empty($serverOffsetStr) || $serverOffsetStr === '0'
                 ? (int) $serverOffsetStr
@@ -328,6 +303,7 @@ class ResumableUploadClient
 
             $state->reconcileRecoveryOffset($serverOffset, $dataStream, self::MAX_RECOVERY_ATTEMPTS);
 
+            $statusHeader = $response->getHeaderLine('X-Goog-Upload-Status');
             if ($statusHeader === 'final') {
                 $this->finalResponse = $response;
                 return self::PHASE_DONE;
@@ -411,9 +387,7 @@ class ResumableUploadClient
 
         // For transient HTTP errors, return the current phase unchanged so that the match loop
         // re-runs the phase and retries the request until the total deadline is exceeded.
-        if (in_array($code, [408, 429, 500, 502, 503, 504])
-            || ($e instanceof ApiException && $e->getStatus() === ApiStatus::UNAVAILABLE)
-        ) {
+        if (in_array($code, [429, 500, 502, 503, 504])) {
             return $state->phase;
         }
 

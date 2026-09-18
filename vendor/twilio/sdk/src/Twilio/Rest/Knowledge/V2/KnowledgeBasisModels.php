@@ -59,10 +59,8 @@ class KnowledgeBaseCore implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'displayName' => $this->displayName
         ];
-        if (isset($this->displayName)) {
-            $jsonString['displayName'] = $this->displayName;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }

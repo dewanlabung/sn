@@ -1,0 +1,8 @@
+[18-Sep-2026 12:49:27 UTC] PHP Warning:  require(/home/alphaome/nkhoj.com/includes/config.php): Failed to open stream: No such file or directory in /home/alphaome/nkhoj.com/bootstrap.php on line 36
+[18-Sep-2026 12:49:27 UTC] PHP Warning:  require(/home/alphaome/nkhoj.com/includes/config.php): Failed to open stream: No such file or directory in /home/alphaome/nkhoj.com/bootstrap.php on line 36
+[18-Sep-2026 12:49:27 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/alphaome/nkhoj.com/includes/config.php' (include_path='.:/opt/alt/php84/usr/share/pear:/opt/alt/php84/usr/share/php:/usr/share/pear:/usr/share/php') in /home/alphaome/nkhoj.com/bootstrap.php:36
+Stack trace:
+#0 /home/alphaome/nkhoj.com/bootloader.php(11): require()
+#1 /home/alphaome/nkhoj.com/index.php(11): require('/home/alphaome/...')
+#2 {main}
+  thrown in /home/alphaome/nkhoj.com/bootstrap.php on line 36

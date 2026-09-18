@@ -80,9 +80,7 @@ class AwsNativeSource implements ExternalAccountCredentialSourceInterface
 
         if (!$signingVars) {
             if (!$this->securityCredentialsUrl) {
-                throw new \LogicException(
-                    'Unable to get credentials from ENV, and no security credentials URL provided'
-                );
+                throw new \LogicException('Unable to get credentials from ENV, and no security credentials URL provided');
             }
             $signingVars = self::getSigningVarsFromUrl(
                 $httpHandler,

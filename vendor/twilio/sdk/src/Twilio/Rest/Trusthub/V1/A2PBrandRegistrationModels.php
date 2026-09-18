@@ -154,13 +154,9 @@ class TrusthubV1A2pBrandRegistrationRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'brandType' => $this->brandType,
+            'notificationEmail' => $this->notificationEmail
         ];
-        if (isset($this->brandType)) {
-            $jsonString['brandType'] = $this->brandType;
-        }
-        if (isset($this->notificationEmail)) {
-            $jsonString['notificationEmail'] = $this->notificationEmail;
-        }
         if (isset($this->themeSetId)) {
             $jsonString['themeSetId'] = $this->themeSetId;
         }

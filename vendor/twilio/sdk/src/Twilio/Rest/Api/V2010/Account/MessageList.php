@@ -105,8 +105,6 @@ class MessageList extends ListResource
                 Serialize::booleanToString($options['sendAsMms']),
             'ContentVariables' =>
                 $options['contentVariables'],
-            'MessageIntent' =>
-                $options['messageIntent'],
             'RiskCheck' =>
                 $options['riskCheck'],
             'From' =>

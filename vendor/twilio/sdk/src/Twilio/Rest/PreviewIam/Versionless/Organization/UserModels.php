@@ -249,10 +249,8 @@ class ScimUser implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'userName' => $this->userName
         ];
-        if (isset($this->userName)) {
-            $jsonString['userName'] = $this->userName;
-        }
         if (isset($this->id)) {
             $jsonString['id'] = $this->id;
         }

@@ -127,13 +127,9 @@ class CreateCommunicationInConversationRequestAuthor implements \JsonSerializabl
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'address' => $this->address,
+            'channel' => $this->channel
         ];
-        if (isset($this->address)) {
-            $jsonString['address'] = $this->address;
-        }
-        if (isset($this->channel)) {
-            $jsonString['channel'] = $this->channel;
-        }
         if (isset($this->participantId)) {
             $jsonString['participantId'] = $this->participantId;
         }
@@ -203,13 +199,9 @@ class CreateCommunicationInConversationRequestContent implements \JsonSerializab
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'type' => $this->type,
+            'text' => $this->text
         ];
-        if (isset($this->type)) {
-            $jsonString['type'] = $this->type;
-        }
-        if (isset($this->text)) {
-            $jsonString['text'] = $this->text;
-        }
         if (isset($this->transcription)) {
             $jsonString['transcription'] = $this->transcription;
         }
@@ -241,13 +233,9 @@ class CreateCommunicationInConversationRequestRecipients implements \JsonSeriali
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'address' => $this->address,
+            'channel' => $this->channel
         ];
-        if (isset($this->address)) {
-            $jsonString['address'] = $this->address;
-        }
-        if (isset($this->channel)) {
-            $jsonString['channel'] = $this->channel;
-        }
         if (isset($this->participantId)) {
             $jsonString['participantId'] = $this->participantId;
         }
@@ -285,16 +273,10 @@ class CreateCommunicationInConversationRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'author' => $this->author,
+            'content' => $this->content,
+            'recipients' => $this->recipients
         ];
-        if (isset($this->author)) {
-            $jsonString['author'] = $this->author;
-        }
-        if (isset($this->content)) {
-            $jsonString['content'] = $this->content;
-        }
-        if (isset($this->recipients)) {
-            $jsonString['recipients'] = $this->recipients;
-        }
         if (isset($this->channelId)) {
             $jsonString['channelId'] = $this->channelId;
         }
@@ -329,13 +311,9 @@ class ConversationsV2ParticipantAddress implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'address' => $this->address,
+            'channel' => $this->channel
         ];
-        if (isset($this->address)) {
-            $jsonString['address'] = $this->address;
-        }
-        if (isset($this->channel)) {
-            $jsonString['channel'] = $this->channel;
-        }
         if (isset($this->participantId)) {
             $jsonString['participantId'] = $this->participantId;
         }
@@ -411,13 +389,9 @@ class ListCommunicationByConversation200ResponseCommunicationsContent implements
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'type' => $this->type,
+            'text' => $this->text
         ];
-        if (isset($this->type)) {
-            $jsonString['type'] = $this->type;
-        }
-        if (isset($this->text)) {
-            $jsonString['text'] = $this->text;
-        }
         if (isset($this->transcription)) {
             $jsonString['transcription'] = $this->transcription;
         }

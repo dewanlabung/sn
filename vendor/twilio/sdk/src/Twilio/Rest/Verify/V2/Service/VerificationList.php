@@ -96,8 +96,6 @@ class VerificationList extends ListResource
                 $options['templateSid'],
             'TemplateCustomSubstitutions' =>
                 $options['templateCustomSubstitutions'],
-            'Templates' =>
-                $options['templates'],
             'DeviceIp' =>
                 $options['deviceIp'],
             'EnableSnaClientToken' =>

@@ -149,10 +149,8 @@ class Operator implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'id' => $this->id
         ];
-        if (isset($this->id)) {
-            $jsonString['id'] = $this->id;
-        }
         if (isset($this->version)) {
             $jsonString['version'] = $this->version;
         }
@@ -210,10 +208,8 @@ class Trigger implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'on' => $this->on
         ];
-        if (isset($this->on)) {
-            $jsonString['on'] = $this->on;
-        }
         if (isset($this->parameters)) {
             $jsonString['parameters'] = $this->parameters;
         }
@@ -245,16 +241,10 @@ class Action implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'type' => $this->type,
+            'method' => $this->method,
+            'url' => $this->url
         ];
-        if (isset($this->type)) {
-            $jsonString['type'] = $this->type;
-        }
-        if (isset($this->method)) {
-            $jsonString['method'] = $this->method;
-        }
-        if (isset($this->url)) {
-            $jsonString['url'] = $this->url;
-        }
         return $jsonString;
     }
 }
@@ -303,10 +293,8 @@ class ContextKnowledge implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'bases' => $this->bases
         ];
-        if (isset($this->bases)) {
-            $jsonString['bases'] = $this->bases;
-        }
         return $jsonString;
     }
 }
@@ -370,13 +358,9 @@ class RuleCreationRequestPayload implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'operators' => $this->operators,
+            'actions' => $this->actions
         ];
-        if (isset($this->operators)) {
-            $jsonString['operators'] = $this->operators;
-        }
-        if (isset($this->actions)) {
-            $jsonString['actions'] = $this->actions;
-        }
         if (isset($this->triggers)) {
             $jsonString['triggers'] = $this->triggers;
         }
@@ -411,13 +395,9 @@ class CreateConfigurationRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'displayName' => $this->displayName,
+            'rules' => $this->rules
         ];
-        if (isset($this->displayName)) {
-            $jsonString['displayName'] = $this->displayName;
-        }
-        if (isset($this->rules)) {
-            $jsonString['rules'] = $this->rules;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }
@@ -455,13 +435,9 @@ class RuleUpdateRequestPayload implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'operators' => $this->operators,
+            'actions' => $this->actions
         ];
-        if (isset($this->operators)) {
-            $jsonString['operators'] = $this->operators;
-        }
-        if (isset($this->actions)) {
-            $jsonString['actions'] = $this->actions;
-        }
         if (isset($this->id)) {
             $jsonString['id'] = $this->id;
         }
@@ -499,13 +475,9 @@ class UpdateConfigurationRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'displayName' => $this->displayName,
+            'rules' => $this->rules
         ];
-        if (isset($this->displayName)) {
-            $jsonString['displayName'] = $this->displayName;
-        }
-        if (isset($this->rules)) {
-            $jsonString['rules'] = $this->rules;
-        }
         if (isset($this->description)) {
             $jsonString['description'] = $this->description;
         }

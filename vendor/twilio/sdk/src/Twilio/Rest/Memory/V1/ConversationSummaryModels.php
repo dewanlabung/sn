@@ -77,16 +77,10 @@ class SummaryCore implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'content' => $this->content,
+            'occurredAt' => $this->occurredAt,
+            'conversationId' => $this->conversationId
         ];
-        if (isset($this->content)) {
-            $jsonString['content'] = $this->content;
-        }
-        if (isset($this->occurredAt)) {
-            $jsonString['occurredAt'] = $this->occurredAt;
-        }
-        if (isset($this->conversationId)) {
-            $jsonString['conversationId'] = $this->conversationId;
-        }
         if (isset($this->source)) {
             $jsonString['source'] = $this->source;
         }
@@ -112,10 +106,8 @@ class CreateSummariesRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'summaries' => $this->summaries
         ];
-        if (isset($this->summaries)) {
-            $jsonString['summaries'] = $this->summaries;
-        }
         return $jsonString;
     }
 }

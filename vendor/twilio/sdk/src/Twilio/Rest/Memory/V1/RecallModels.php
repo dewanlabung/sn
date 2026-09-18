@@ -129,10 +129,8 @@ class MemoryRetrievalResponseMeta implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'queryTime' => $this->queryTime
         ];
-        if (isset($this->queryTime)) {
-            $jsonString['queryTime'] = $this->queryTime;
-        }
         return $jsonString;
     }
 }

@@ -79,10 +79,8 @@ class IdentifierConfig implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'idType' => $this->idType
         ];
-        if (isset($this->idType)) {
-            $jsonString['idType'] = $this->idType;
-        }
         if (isset($this->matchingAlgo)) {
             $jsonString['matchingAlgo'] = $this->matchingAlgo;
         }
@@ -126,13 +124,9 @@ class IdentityResolutionSettingsCore implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'identifierConfigs' => $this->identifierConfigs,
+            'matchingRules' => $this->matchingRules
         ];
-        if (isset($this->identifierConfigs)) {
-            $jsonString['identifierConfigs'] = $this->identifierConfigs;
-        }
-        if (isset($this->matchingRules)) {
-            $jsonString['matchingRules'] = $this->matchingRules;
-        }
         return $jsonString;
     }
 }

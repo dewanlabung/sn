@@ -105,13 +105,14 @@ class NewChallengeInstance extends InstanceResource
     /**
      * Create the NewChallengeInstance
      *
+     * @param CreatePasskeysChallengeRequest $createPasskeysChallengeRequest
      * @return NewChallengeInstance Created NewChallengeInstance
      * @throws TwilioException When an HTTP error occurs.
      */
-    public function create(): NewChallengeInstance
+    public function create(CreatePasskeysChallengeRequest $createPasskeysChallengeRequest): NewChallengeInstance
     {
 
-        return $this->proxy()->create();
+        return $this->proxy()->create($createPasskeysChallengeRequest);
     }
 
     /**

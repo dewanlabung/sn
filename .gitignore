@@ -1,8 +1,0 @@
-vendor/
-node_modules/
-sockets/node/node_modules/
-.DS_Store
-*.log
-.env
-includes/config.php
-content/uploads/

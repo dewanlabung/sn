@@ -19,7 +19,7 @@
  */
 
 /*
-    HTML Purifier 4.19.1 - Standards Compliant HTML Filtering
+    HTML Purifier 4.19.0 - Standards Compliant HTML Filtering
     Copyright (C) 2006-2008 Edward Z. Yang
 
     This library is free software; you can redistribute it and/or
@@ -58,12 +58,12 @@ class HTMLPurifier
      * Version of HTML Purifier.
      * @type string
      */
-    public $version = '4.19.1';
+    public $version = '4.19.0';
 
     /**
      * Constant with version of HTML Purifier.
      */
-    const VERSION = '4.19.1';
+    const VERSION = '4.19.0';
 
     /**
      * Global configuration object.
@@ -174,7 +174,6 @@ class HTMLPurifier
         $id_accumulator = HTMLPurifier_IDAccumulator::build($config, $context);
         $context->register('IDAccumulator', $id_accumulator);
 
-        $html = (string) $html;
         $html = HTMLPurifier_Encoder::convertToUTF8($html, $config, $context);
 
         // setup filters
@@ -200,7 +199,7 @@ class HTMLPurifier
         // maybe prepare(), but later
 
         for ($i = 0, $filter_size = count($filters); $i < $filter_size; $i++) {
-            $html = (string) $filters[$i]->preFilter($html, $config, $context);
+            $html = $filters[$i]->preFilter($html, $config, $context);
         }
 
         // purified HTML
@@ -221,7 +220,7 @@ class HTMLPurifier
             );
 
         for ($i = $filter_size - 1; $i >= 0; $i--) {
-            $html = (string) $filters[$i]->postFilter($html, $config, $context);
+            $html = $filters[$i]->postFilter($html, $config, $context);
         }
 
         $html = HTMLPurifier_Encoder::convertFromUTF8($html, $config, $context);

@@ -77,16 +77,10 @@ class ObservationCreateRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'content' => $this->content,
+            'occurredAt' => $this->occurredAt,
+            'source' => $this->source
         ];
-        if (isset($this->content)) {
-            $jsonString['content'] = $this->content;
-        }
-        if (isset($this->occurredAt)) {
-            $jsonString['occurredAt'] = $this->occurredAt;
-        }
-        if (isset($this->source)) {
-            $jsonString['source'] = $this->source;
-        }
         if (isset($this->conversationIds)) {
             $jsonString['conversationIds'] = $this->conversationIds;
         }
@@ -112,10 +106,8 @@ class CreateObservationsRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'observations' => $this->observations
         ];
-        if (isset($this->observations)) {
-            $jsonString['observations'] = $this->observations;
-        }
         return $jsonString;
     }
 }

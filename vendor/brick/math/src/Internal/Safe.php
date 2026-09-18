@@ -18,9 +18,6 @@ use const PHP_INT_MIN;
  */
 final class Safe
 {
-    /**
-     * @codeCoverageIgnore
-     */
     private function __construct()
     {
     }

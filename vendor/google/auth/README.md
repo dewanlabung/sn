@@ -1,10 +1,6 @@
 # Google Auth Library for PHP
 
-* [API documentation](https://cloud.google.com/php/docs/reference/auth/latest)
-
-**NOTE:** This repository is part of [Google Cloud PHP](https://github.com/googleapis/google-cloud-php). Any
-support requests, bug reports, or development contributions should be directed to
-that project.
+<a href="https://cloud.google.com/php/docs/reference/auth/latest">Reference Docs</a>
 
 ## Description
 
@@ -164,9 +160,7 @@ If you want to use a specific JSON key instead of using `GOOGLE_APPLICATION_CRED
  do this:
 
 ```php
-use Google\Auth\Credentials\ServiceAccountCredentials;
-use Google\Auth\Credentials\UserRefreshCredentials;
-use Google\Auth\FetchAuthTokenCache;
+use Google\Auth\CredentialsLoader;
 use Google\Auth\Middleware\AuthTokenMiddleware;
 use GuzzleHttp\Client;
 use GuzzleHttp\HandlerStack;
@@ -178,13 +172,13 @@ $jsonKey = ['key' => 'value'];
 $scopes = ['https://www.googleapis.com/auth/drive.readonly'];
 
 // Load credentials from JSON containing service account credentials.
-$creds = new ServiceAccountCredentials($scopes, $jsonKey);
+$creds = new ServiceAccountCredentials($scopes, $jsonKey),
 
 // For other credentials types, create those classes explicitly using the
 // "type" field in the JSON key, for example:
 $creds = match ($jsonKey['type']) {
-    'service_account' => new ServiceAccountCredentials($scopes, $jsonKey),
-    'authorized_user' => new UserRefreshCredentials($scopes, $jsonKey),
+    'service_account' => new ServiceAccountCredentials($scope, $jsonKey),
+    'authorized_user' => new UserRefreshCredentials($scope, $jsonKey),
     default => throw new InvalidArgumentException('This application only supports service account and user account credentials'),
 };
 

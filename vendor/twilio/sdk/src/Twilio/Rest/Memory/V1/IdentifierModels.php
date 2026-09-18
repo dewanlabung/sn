@@ -60,13 +60,9 @@ class Identifier implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'idType' => $this->idType,
+            'value' => $this->value
         ];
-        if (isset($this->idType)) {
-            $jsonString['idType'] = $this->idType;
-        }
-        if (isset($this->value)) {
-            $jsonString['value'] = $this->value;
-        }
         return $jsonString;
     }
 }
@@ -95,16 +91,10 @@ class IdentifierUpdate implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'idType' => $this->idType,
+            'oldValue' => $this->oldValue,
+            'newValue' => $this->newValue
         ];
-        if (isset($this->idType)) {
-            $jsonString['idType'] = $this->idType;
-        }
-        if (isset($this->oldValue)) {
-            $jsonString['oldValue'] = $this->oldValue;
-        }
-        if (isset($this->newValue)) {
-            $jsonString['newValue'] = $this->newValue;
-        }
         return $jsonString;
     }
 }

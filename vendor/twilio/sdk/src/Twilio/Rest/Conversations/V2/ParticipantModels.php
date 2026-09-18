@@ -76,13 +76,9 @@ class CreateConversationWithConfigRequestParticipantsAddresses implements \JsonS
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'channel' => $this->channel,
+            'address' => $this->address
         ];
-        if (isset($this->channel)) {
-            $jsonString['channel'] = $this->channel;
-        }
-        if (isset($this->address)) {
-            $jsonString['address'] = $this->address;
-        }
         if (isset($this->channelId)) {
             $jsonString['channelId'] = $this->channelId;
         }
@@ -117,10 +113,8 @@ class CreateParticipantInConversationRequest implements \JsonSerializable
     public function jsonSerialize(): array
     {
         $jsonString = [
+            'addresses' => $this->addresses
         ];
-        if (isset($this->addresses)) {
-            $jsonString['addresses'] = $this->addresses;
-        }
         if (isset($this->name)) {
             $jsonString['name'] = $this->name;
         }
