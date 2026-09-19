@@ -209,6 +209,7 @@ trait ForumsTrait
     $forum = !isset($args['forum']) ? null : $args['forum'];
     $user_id = !isset($args['user_id']) ? null : $args['user_id'];
     $query = !isset($args['query']) ? null : $args['query'];
+    $sort = !isset($args['sort']) ? 'newest' : $args['sort'];
     /* get threads */
     if ($forum !== null) {
       $get_total = $db->query(sprintf("SELECT COUNT(*) as count FROM forums_threads WHERE forum_id = %s", secure($forum['forum_id'], 'int')));
@@ -243,19 +244,38 @@ trait ForumsTrait
       }
       $pager = new Pager($params);
       $limit_query = $pager->getLimitSql();
-      if ($forum !== null) {
-        $get_threads = $db->query(sprintf("SELECT forums_threads.*, users.user_name, users.user_firstname, users.user_lastname FROM forums_threads INNER JOIN users ON forums_threads.user_id = users.user_id WHERE forums_threads.forum_id = %s ORDER BY forums_threads.last_reply DESC " . $limit_query, secure($forum['forum_id'], 'int')));
-      } elseif ($user_id !== null) {
-        $get_threads = $db->query(sprintf("SELECT forums_threads.*, users.user_name, users.user_firstname, users.user_lastname FROM forums_threads INNER JOIN users ON forums_threads.user_id = users.user_id WHERE forums_threads.user_id = %s ORDER BY forums_threads.last_reply DESC " . $limit_query, secure($user_id, 'int')));
-      } elseif ($query !== null) {
-        $get_threads = $db->query("SELECT forums_threads.*, users.user_name, users.user_firstname, users.user_lastname FROM forums_threads INNER JOIN users ON forums_threads.user_id = users.user_id " . $where . " ORDER BY forums_threads.last_reply DESC " . $limit_query);
+      /* sort order */
+      switch ($sort) {
+        case 'top':
+          $order = "forums_threads.replies DESC, forums_threads.views DESC";
+          break;
+        case 'hot':
+          $order = "((forums_threads.replies + forums_threads.views) / (TIMESTAMPDIFF(HOUR, forums_threads.time, NOW()) + 2)) DESC";
+          break;
+        case 'unanswered':
+          $order = "forums_threads.time DESC";
+          break;
+        default:
+          $order = "forums_threads.last_reply DESC";
       }
+      if ($forum !== null) {
+        $where_unanswered = ($sort === 'unanswered') ? " AND forums_threads.replies = 0" : "";
+        $get_threads = $db->query(sprintf("SELECT forums_threads.*, users.user_name, users.user_firstname, users.user_lastname, users.user_gender, users.user_picture, users.user_verified FROM forums_threads INNER JOIN users ON forums_threads.user_id = users.user_id WHERE forums_threads.forum_id = %s" . $where_unanswered . " ORDER BY " . $order . " " . $limit_query, secure($forum['forum_id'], 'int')));
+      } elseif ($user_id !== null) {
+        $get_threads = $db->query(sprintf("SELECT forums_threads.*, users.user_name, users.user_firstname, users.user_lastname, users.user_gender, users.user_picture, users.user_verified FROM forums_threads INNER JOIN users ON forums_threads.user_id = users.user_id WHERE forums_threads.user_id = %s ORDER BY " . $order . " " . $limit_query, secure($user_id, 'int')));
+      } elseif ($query !== null) {
+        $get_threads = $db->query("SELECT forums_threads.*, users.user_name, users.user_firstname, users.user_lastname, users.user_gender, users.user_picture, users.user_verified FROM forums_threads INNER JOIN users ON forums_threads.user_id = users.user_id " . $where . " ORDER BY " . $order . " " . $limit_query);
+      }
+      $this->ensure_forums_votes_table();
       while ($thread = $get_threads->fetch_assoc()) {
         $thread['user_fullname'] = ($system['show_usernames_enabled']) ? $thread['user_name'] : $thread['user_firstname'] . " " . $thread['user_lastname'];
+        $thread['user_picture']  = get_picture($thread['user_picture'], $thread['user_gender']);
         $thread['title_url'] = get_url_text($thread['title']);
         /* parse text */
         $thread['parsed_text'] = htmlspecialchars_decode($thread['text'], ENT_QUOTES);
         $thread['text_snippet'] = get_snippet_text($thread['text']);
+        /* vote data */
+        $thread['votes'] = $this->get_forum_votes($thread['thread_id'], 'thread');
         /* get forum */
         if (!$forum) {
           $thread['forum'] = $this->get_forum($thread['forum_id'], false);
@@ -312,6 +332,9 @@ trait ForumsTrait
     if ($update_views) {
       $db->query(sprintf("UPDATE forums_threads SET views = views + 1 WHERE thread_id = %s", secure($thread['thread_id'], 'int')));
     }
+    /* attach vote data */
+    $this->ensure_forums_votes_table();
+    $thread['votes'] = $this->get_forum_votes($thread['thread_id'], 'thread');
     return $thread;
   }
 
@@ -546,6 +569,8 @@ trait ForumsTrait
             $reply['manage_reply'] = true;
           }
         }
+        /* vote data */
+        $reply['votes'] = $this->get_forum_votes($reply['reply_id'], 'reply');
         /* get thread */
         if (!$thread) {
           $reply['thread'] = $this->get_forum_thread($reply['thread_id']);
@@ -802,5 +827,62 @@ trait ForumsTrait
       }
     }
     return $users;
+  }
+
+
+  /* ------------------------------- */
+  /* Forum Votes                     */
+  /* ------------------------------- */
+
+  /**
+   * get_forum_votes
+   * Returns vote counts + viewer's own vote for a single item.
+   */
+  public function get_forum_votes($item_id, $item_type)
+  {
+    global $db;
+    $result = ['upvotes' => 0, 'downvotes' => 0, 'score' => 0, 'my_vote' => null];
+
+    $counts = $db->query(sprintf(
+      "SELECT SUM(vote_type='up') AS upvotes, SUM(vote_type='down') AS downvotes
+       FROM forums_votes WHERE item_id = %s AND item_type = %s",
+      secure($item_id, 'int'), secure($item_type)
+    ));
+    if ($counts && $counts->num_rows > 0) {
+      $row = $counts->fetch_assoc();
+      $result['upvotes']   = (int) $row['upvotes'];
+      $result['downvotes'] = (int) $row['downvotes'];
+      $result['score']     = $result['upvotes'] - $result['downvotes'];
+    }
+    if ($this->_logged_in) {
+      $my = $db->query(sprintf(
+        "SELECT vote_type FROM forums_votes WHERE user_id = %s AND item_id = %s AND item_type = %s",
+        secure($this->_data['user_id'], 'int'), secure($item_id, 'int'), secure($item_type)
+      ));
+      if ($my && $my->num_rows > 0) {
+        $result['my_vote'] = $my->fetch_assoc()['vote_type'];
+      }
+    }
+    return $result;
+  }
+
+  /**
+   * ensure_forums_votes_table
+   * Auto-creates forums_votes if it doesn't exist yet.
+   */
+  public function ensure_forums_votes_table()
+  {
+    global $db;
+    $db->query("CREATE TABLE IF NOT EXISTS `forums_votes` (
+      `vote_id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+      `user_id` int(10) UNSIGNED NOT NULL,
+      `item_id` int(10) UNSIGNED NOT NULL,
+      `item_type` enum('thread','reply') NOT NULL DEFAULT 'thread',
+      `vote_type` enum('up','down') NOT NULL DEFAULT 'up',
+      `time` datetime NOT NULL,
+      PRIMARY KEY (`vote_id`),
+      UNIQUE KEY `unique_vote` (`user_id`,`item_id`,`item_type`),
+      KEY `idx_item` (`item_id`,`item_type`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC");
   }
 }
