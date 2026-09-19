@@ -131,6 +131,18 @@
 
       <!-- sidebar -->
       <div class="fm-sidebar">
+        {if $popular_tags}
+          <div class="fm-widget fm-tags-widget">
+            <div class="fm-widget-head">🏷️ {__("Popular Topics")}</div>
+            {foreach $popular_tags as $tag}
+              <a href="{$system['system_url']}/forums?tag={$tag['tag_slug']}" class="fm-topic-row">
+                <span class="fm-topic-dot" style="background:{$tag['tag_color']}"></span>
+                <span class="fm-topic-name">{$tag['tag_name']}</span>
+                <span class="fm-topic-count">{$tag['tag_posts']}</span>
+              </a>
+            {/foreach}
+          </div>
+        {/if}
         {if $top_contributors}
           <div class="fm-widget">
             <div class="fm-widget-head">{__("Top Contributors")}</div>
@@ -213,9 +225,11 @@
         {if $forum['forum_section'] != '0'}
           <div class="fm-sort-bar">
             <div class="fm-sort-tabs">
-              <a href="?sort=newest" class="fm-sort-tab {if $sort == 'newest' || !$sort}active{/if}">{__("Newest")}</a>
-              <a href="?sort=hot"    class="fm-sort-tab {if $sort == 'hot'}active{/if}">{__("Hot 🔥")}</a>
-              <a href="?sort=top"    class="fm-sort-tab {if $sort == 'top'}active{/if}">{__("Top")}</a>
+              <a href="?sort=newest"    class="fm-sort-tab {if $sort == 'newest' || !$sort}active{/if}">{__("Newest")}</a>
+              <a href="?sort=hot"       class="fm-sort-tab {if $sort == 'hot'}active{/if}">{__("Hot 🔥")}</a>
+              <a href="?sort=top"       class="fm-sort-tab {if $sort == 'top'}active{/if}">{__("Top ⬆")}</a>
+              <a href="?sort=rising"    class="fm-sort-tab {if $sort == 'rising'}active{/if}">{__("Rising 📈")}</a>
+              <a href="?sort=q&a"       class="fm-sort-tab {if $sort == 'q&a'}active{/if}">{__("Q&A ❓")}</a>
               <a href="?sort=unanswered" class="fm-sort-tab {if $sort == 'unanswered'}active{/if}">{__("Unanswered")}</a>
             </div>
             {if $user->_logged_in}
@@ -359,7 +373,11 @@
         {if $thread['replies'] > 0}
           <div class="fm-replies-head">{$thread['replies']|number_format:0} {__("Replies")}</div>
           {foreach $thread['thread_replies'] as $reply}
-            <div class="fm-reply-card" id="reply-{$reply['reply_id']}">
+            <div class="fm-reply-card {if $reply['reply_id'] == $thread['best_reply_id']}fm-best-answer{/if}" id="reply-{$reply['reply_id']}">
+
+              {if $reply['reply_id'] == $thread['best_reply_id']}
+                <div class="fm-best-answer-badge">✅ {__("Best Answer")}</div>
+              {/if}
 
               <!-- vote column -->
               <div class="fm-vote-col" data-item-id="{$reply['reply_id']}" data-item-type="reply">
@@ -396,6 +414,13 @@
                        class="fm-action-btn" title="{__('Link')}">
                       <i class="fa fa-link"></i>
                     </a>
+                    {if $user->_logged_in && $user->_data['user_id'] == $thread['user_id']}
+                      <button class="fm-action-btn fm-mark-best-btn"
+                              data-thread="{$thread['thread_id']}" data-reply="{$reply['reply_id']}"
+                              title="{if $reply['reply_id'] == $thread['best_reply_id']}{__('Unmark Best Answer')}{else}{__('Mark as Best Answer')}{/if}">
+                        {if $reply['reply_id'] == $thread['best_reply_id']}✅{else}☑{/if}
+                      </button>
+                    {/if}
                     {if $reply['manage_reply']}
                       <a href="{$system['system_url']}/forums/edit-reply/{$reply['reply_id']}" class="fm-action-btn" title="{__('Edit')}">
                         <i class="fa fa-pencil-alt"></i>
@@ -449,7 +474,7 @@
       <!-- /sidebar -->
     </div>
 
-    <!-- vote JS -->
+    <!-- vote + best-answer JS -->
     <script>
     function forumVote(btn, voteType, itemType, itemId) {
       {if !$user->_logged_in}
@@ -474,8 +499,24 @@
         }
       });
     }
+
+    document.querySelectorAll('.fm-mark-best-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var threadId = this.dataset.thread;
+        var replyId  = this.dataset.reply;
+        fetch('{$system['system_url']}/includes/ajax/forums/best-answer.php', {
+          method: 'POST',
+          headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+          body: 'thread_id=' + threadId + '&reply_id=' + replyId
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.error) location.reload();
+        });
+      });
+    });
     </script>
-    <!-- /vote JS -->
+    <!-- /vote + best-answer JS -->
 
 
   {* ================================================================ *}
