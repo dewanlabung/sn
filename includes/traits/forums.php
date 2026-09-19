@@ -901,18 +901,20 @@ trait ForumsTrait
    * mark_best_answer
    * Thread author marks a reply as the accepted/best answer.
    */
-  public function mark_best_answer(int $thread_id, int $reply_id): bool
+  public function mark_best_answer($thread_id, $reply_id)
   {
     global $db;
+    $thread_id = (int) $thread_id;
+    $reply_id  = (int) $reply_id;
     $thread = $this->get_forum_thread($thread_id);
     if (!$thread) return false;
     /* only thread author or admin/mod can mark best answer */
     if ($this->_data['user_id'] != $thread['user_id'] && $this->_data['user_group'] >= 3) {
       return false;
     }
-    /* ensure best_reply_id column exists */
-    $db->query("ALTER TABLE forums_threads ADD COLUMN IF NOT EXISTS `best_reply_id` INT UNSIGNED NULL DEFAULT NULL");
-    $db->query("ALTER TABLE forums_threads ADD COLUMN IF NOT EXISTS `solved` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+    /* ensure best_reply_id and solved columns exist (MySQL 5.6 compat: no IF NOT EXISTS for ALTER) */
+    @$db->query("ALTER TABLE forums_threads ADD COLUMN `best_reply_id` INT UNSIGNED NULL DEFAULT NULL");
+    @$db->query("ALTER TABLE forums_threads ADD COLUMN `solved` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
     /* if already set to same reply → unmark (toggle) */
     if ((int)$thread['best_reply_id'] === $reply_id) {
       $db->query(sprintf("UPDATE forums_threads SET best_reply_id = NULL, solved = 0 WHERE thread_id = %s", secure($thread_id, 'int')));
@@ -931,8 +933,9 @@ trait ForumsTrait
    * get_all_tags
    * Returns popular topic tags from the forums_tags table (auto-created).
    */
-  public function get_all_tags(int $limit = 20): array
+  public function get_all_tags($limit = 20)
   {
+    $limit = (int) $limit;
     global $db;
     $db->query("CREATE TABLE IF NOT EXISTS `forums_tags` (
       `tag_id`        INT UNSIGNED NOT NULL AUTO_INCREMENT,
