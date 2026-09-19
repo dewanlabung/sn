@@ -252,6 +252,12 @@ trait ForumsTrait
         case 'hot':
           $order = "((forums_threads.replies + forums_threads.views) / (TIMESTAMPDIFF(HOUR, forums_threads.time, NOW()) + 2)) DESC";
           break;
+        case 'rising':
+          $order = "forums_threads.views DESC, forums_threads.time DESC";
+          break;
+        case 'q&a':
+          $order = "forums_threads.replies ASC, forums_threads.time DESC";
+          break;
         case 'unanswered':
           $order = "forums_threads.time DESC";
           break;
@@ -884,5 +890,66 @@ trait ForumsTrait
       UNIQUE KEY `unique_vote` (`user_id`,`item_id`,`item_type`),
       KEY `idx_item` (`item_id`,`item_type`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC");
+  }
+
+
+  /* ------------------------------- */
+  /* Best Answer (Quora style)       */
+  /* ------------------------------- */
+
+  /**
+   * mark_best_answer
+   * Thread author marks a reply as the accepted/best answer.
+   */
+  public function mark_best_answer(int $thread_id, int $reply_id): bool
+  {
+    global $db;
+    $thread = $this->get_forum_thread($thread_id);
+    if (!$thread) return false;
+    /* only thread author or admin/mod can mark best answer */
+    if ($this->_data['user_id'] != $thread['user_id'] && $this->_data['user_group'] >= 3) {
+      return false;
+    }
+    /* ensure best_reply_id column exists */
+    $db->query("ALTER TABLE forums_threads ADD COLUMN IF NOT EXISTS `best_reply_id` INT UNSIGNED NULL DEFAULT NULL");
+    $db->query("ALTER TABLE forums_threads ADD COLUMN IF NOT EXISTS `solved` TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+    /* if already set to same reply → unmark (toggle) */
+    if ((int)$thread['best_reply_id'] === $reply_id) {
+      $db->query(sprintf("UPDATE forums_threads SET best_reply_id = NULL, solved = 0 WHERE thread_id = %s", secure($thread_id, 'int')));
+    } else {
+      $db->query(sprintf("UPDATE forums_threads SET best_reply_id = %s, solved = 1 WHERE thread_id = %s", secure($reply_id, 'int'), secure($thread_id, 'int')));
+    }
+    return true;
+  }
+
+
+  /* ------------------------------- */
+  /* Tags / Topics                   */
+  /* ------------------------------- */
+
+  /**
+   * get_all_tags
+   * Returns popular topic tags from the forums_tags table (auto-created).
+   */
+  public function get_all_tags(int $limit = 20): array
+  {
+    global $db;
+    $db->query("CREATE TABLE IF NOT EXISTS `forums_tags` (
+      `tag_id`        INT UNSIGNED NOT NULL AUTO_INCREMENT,
+      `tag_name`      VARCHAR(100) NOT NULL,
+      `tag_slug`      VARCHAR(100) NOT NULL,
+      `tag_desc`      TEXT,
+      `tag_color`     VARCHAR(7) NOT NULL DEFAULT '#6366f1',
+      `tag_posts`     INT UNSIGNED NOT NULL DEFAULT 0,
+      `tag_followers` INT UNSIGNED NOT NULL DEFAULT 0,
+      PRIMARY KEY (`tag_id`),
+      UNIQUE KEY `unique_slug` (`tag_slug`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci ROW_FORMAT=DYNAMIC");
+    $result = $db->query("SELECT * FROM forums_tags ORDER BY tag_posts DESC LIMIT " . (int)$limit);
+    $tags = [];
+    if ($result && $result->num_rows > 0) {
+      while ($t = $result->fetch_assoc()) $tags[] = $t;
+    }
+    return $tags;
   }
 }

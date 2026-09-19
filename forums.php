@@ -77,6 +77,9 @@ try {
         }
       }
       $smarty->assign('top_contributors', $contributors);
+      /* popular tags */
+      $popular_tags = $user->get_all_tags(15);
+      $smarty->assign('popular_tags', $popular_tags);
       break;
 
     case 'forum':
@@ -86,7 +89,7 @@ try {
         _error(404);
       }
       /* sort */
-      $sort = isset($_GET['sort']) && in_array($_GET['sort'], ['newest','top','hot','unanswered']) ? $_GET['sort'] : 'newest';
+      $sort = isset($_GET['sort']) && in_array($_GET['sort'], ['newest','top','hot','rising','q&a','unanswered']) ? $_GET['sort'] : 'newest';
       $smarty->assign('sort', $sort);
       /* get threads */
       $forum['threads'] = $user->get_forum_threads(['forum' => $forum, 'sort' => $sort]);
