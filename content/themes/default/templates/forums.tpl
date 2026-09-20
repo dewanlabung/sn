@@ -1,755 +1,884 @@
 {include file='_head.tpl'}
 {include file='_header.tpl'}
 
-<!-- FORUMS MODERN UI -->
-<div class="{if $system['fluid_design']}container-fluid{else}container{/if} forum-modern-wrap">
+<!-- page header -->
+<div class="page-header">
+  <img class="floating-img d-none d-md-block" src="{$system['system_url']}/content/themes/{$system['theme']}/images/headers/undraw_elements_cipa.svg">
+  <div class="circle-2"></div>
+  <div class="circle-3"></div>
+  <div class="inner">
+    <h2>{__("Forums")}</h2>
+    <p class="text-xlg">{__($system['system_description_forums'])}</p>
+  </div>
+</div>
+<!-- page header -->
 
-  {* ================================================================ *}
-  {* VIEW: HOME                                                        *}
-  {* ================================================================ *}
-  {if $view == ""}
+<!-- page content -->
+<div class="{if $system['fluid_design']}container-fluid{else}container{/if} sg-offcanvas" style="margin-top: -25px;">
+  <div class="row">
 
-    <!-- forum home header -->
-    <div class="fm-page-hero">
-      <div class="fm-page-hero-inner">
-        <h1>{__("Forums")}</h1>
-        <p>{__($system['system_description_forums'])}</p>
-        {if $user->_logged_in}
-          <a href="{$system['system_url']}/forums" class="fm-btn fm-btn-ghost">
-            {include file='__svg_icons.tpl' icon="home" class="fm-icon" width="16px" height="16px"}
-            {__("Browse Categories")}
-          </a>
-        {/if}
-      </div>
+    <!-- side panel -->
+    <div class="col-12 d-block d-md-none sg-offcanvas-sidebar mt20">
+      {include file='_sidebar.tpl'}
     </div>
-    <!-- /forum home header -->
+    <!-- side panel -->
 
-    <div class="fm-layout">
-      <!-- main column -->
-      <div class="fm-main">
+    <!-- content panel -->
+    <div class="col-12 sg-offcanvas-mainbar">
 
+      <div class="position-relative">
         <!-- tabs -->
-        <div class="fm-tabs-bar">
-          <ul class="fm-tabs">
-            <li class="active"><a href="{$system['system_url']}/forums">{__("Home")}</a></li>
+        <div class="content-tabs rounded-sm shadow-sm clearfix">
+          <ul class="d-flex justify-content-xl-start justify-content-evenly">
+            <li {if $view == ""}class="active" {/if}>
+              <a href="{$system['system_url']}/forums">
+                {include file='__svg_icons.tpl' icon="home" class="main-icon mr10" width="24px" height="24px"}
+                <span class="ml5 d-none d-lg-inline-block">{__("Home")}</span>
+              </a>
+            </li>
             {if $user->_logged_in}
-              <li><a href="{$system['system_url']}/forums/my-threads">{__("My Threads")}</a></li>
-              <li><a href="{$system['system_url']}/forums/my-replies">{__("My Replies")}</a></li>
+              <li {if $view == "my-threads"}class="active" {/if}>
+                <a href="{$system['system_url']}/forums/my-threads">
+                  {include file='__svg_icons.tpl' icon="documents" class="main-icon mr10" width="24px" height="24px"}
+                  <span class="ml5 d-none d-lg-inline-block">{__("My Threads")}</span>
+                </a>
+              </li>
+              <li {if $view == "my-replies"}class="active" {/if}>
+                <a href="{$system['system_url']}/forums/my-replies">
+                  {include file='__svg_icons.tpl' icon="comments" class="main-icon mr10" width="24px" height="24px"}
+                  <span class="ml5 d-none d-lg-inline-block">{__("My Replies")}</span>
+                </a>
+              </li>
             {/if}
-            <li><a href="{$system['system_url']}/forums/search">{__("Search")}</a></li>
+            <li {if $view == "search"}class="active" {/if}>
+              <a href="{$system['system_url']}/forums/search">
+                {include file='__svg_icons.tpl' icon="search" class="main-icon mr10" width="24px" height="24px"}
+                <span class="ml5 d-none d-lg-inline-block">{__("Search")}</span>
+              </a>
+            </li>
           </ul>
         </div>
-        <!-- /tabs -->
+        <!-- tabs -->
+      </div>
 
-        <!-- forum categories -->
+      {if $view == ""}
+        <!-- forums -->
         {foreach $forums as $forum}
-          <div class="fm-category-card">
-            <div class="fm-category-head">
-              <div class="fm-category-icon">
-                {include file='__svg_icons.tpl' icon="comments" class="fm-icon" width="20px" height="20px"}
+          <div class="forum-category">
+            <a href="{$system['system_url']}/forums/{$forum['forum_id']}/{$forum['title_url']}">{__($forum['forum_name'])}</a>
+            <div class="float-end pointer">
+              <i class="fa fa-sort js_forum-toggle"></i>
+            </div>
+          </div>
+          {if $forum['childs']}
+            <div class="js_forum-toggle-wrapper">
+              <div class="row forum-head">
+                <div class="col-12 col-sm-8 column">
+                  {__("Forums")}
+                </div>
+                <div class="col-sm-2 d-none d-sm-block column">
+                  {__("Threads")}
+                </div>
+                <div class="col-sm-2 d-none d-sm-block column">
+                  {__("Replies")}
+                </div>
               </div>
-              <div class="fm-category-info">
-                <a href="{$system['system_url']}/forums/{$forum['forum_id']}/{$forum['title_url']}" class="fm-category-name">{__($forum['forum_name'])}</a>
-                {if $forum['forum_description']}
-                  <p class="fm-category-desc">{__($forum['forum_description'])}</p>
+              {foreach $forum['childs'] as $_forum}
+                <div class="row forum-row">
+                  <div class="col-sm-1 d-none d-sm-block column icon">
+                    {include file='__svg_icons.tpl' icon="comments" class="main-icon" width="24px" height="24px"}
+                  </div>
+                  <div class="col-12 col-sm-7 column">
+                    <div class="mb5">
+                      <strong><a href="{$system['system_url']}/forums/{$_forum['forum_id']}/{$_forum['title_url']}">{__($_forum['forum_name'])}</a></strong>
+                      <span class="visible-xs-inline-block">({$_forum['total_threads']} {__("Threads")} / {$_forum['total_replies']} {__("Replies")})</span>
+                    </div>
+                    <div class="mb5">
+                      {__($_forum['forum_description'])|nl2br}
+                    </div>
+                    {if $_forum['childs']}
+                      <div class="mb5"><strong>{__("Sub-Forums")}:</strong></div>
+                      <div>
+                        <ul class="sub-forums">
+                          {foreach $_forum['childs'] as $__forum}
+                            <li><a href="{$system['system_url']}/forums/{$__forum['forum_id']}/{$_forum['title_url']}">{__($__forum['forum_name'])}</a>{if !$__forum@last}, {/if}</li>
+                          {/foreach}
+                        </ul>
+                      </div>
+                    {/if}
+                  </div>
+                  <div class="col-sm-2 d-none d-sm-block column text-center">
+                    {$_forum['total_threads']}
+                  </div>
+                  <div class="col-sm-2 d-none d-sm-block column text-center">
+                    {$_forum['total_replies']}
+                  </div>
+                </div>
+              {/foreach}
+            </div>
+          {/if}
+        {/foreach}
+        <!-- forums -->
+
+        <!-- forums meta -->
+        {if $system['forums_online_enabled'] || $system['forums_statistics_enabled']}
+          <div class="forum-category">
+            {__("What's Going On?")}
+          </div>
+          <!-- online users -->
+          {if $system['forums_online_enabled']}
+            <div class="forum-meta-head">
+              {__("Who's online")}<span class="badge badge-lg bg-secondary ml5">{count($online_users)|number_format:0}</span>
+            </div>
+            <div class="forum-meta-conent">
+              {foreach $online_users as $_user}
+                <a href="{$system['system_url']}/{$_user['user_name']}">
+                  {if $system['show_usernames_enabled']}
+                    {$_user['user_name']}
+                  {else}
+                    {$_user['user_firstname']} {$_user['user_lastname']}
+                  {/if}
+                </a>
+                {if !$_user@last}, {/if}
+              {/foreach}
+            </div>
+          {/if}
+          <!-- online users -->
+          <!-- statistics -->
+          {if $system['forums_statistics_enabled']}
+            <div class="forum-meta-head">
+              {__("Forum Statistics")}
+            </div>
+            <div class="forum-meta-conent">
+              <span class="pr10"><strong>{__("Threads")}</strong>: {$insights['threads']|number_format:0}</span>
+              <span class="pr10"><strong>{__("Replies")}</strong>: {$insights['replies']|number_format:0}</span>
+              <span class="pr10"><strong>{__("Members")}</strong>: {$insights['users']|number_format:0}</span>
+            </div>
+          {/if}
+          <!-- statistics -->
+        {/if}
+        <!-- forums meta -->
+
+      {elseif $view == "forum"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          {if $forum['parents']}
+            {foreach array_reverse($forum['parents']) as $parent}
+              <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
+            {/foreach}
+          {/if}
+          <li class="breadcrumb-item active">{__($forum['forum_name'])}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- forum title & description -->
+        <div class="forum-title clearfix">
+          {if $forum['forum_section'] != '0'}
+            <div class="float-end">
+              <a href="{$system['system_url']}/forums/new-thread/{$forum['forum_id']}" class="btn btn-md btn-success">
+                <i class="fa fa-edit mr5"></i>{__("Write New Thread")}
+              </a>
+            </div>
+          {/if}
+          <h1>{__($forum['forum_name'])}</h1>
+          <p>{__($forum['forum_description']|nl2br)}</p>
+        </div>
+        <!-- forum title & description -->
+
+        <!-- forum-category -->
+        {if $forum['forum_section'] == '0'}
+          <div class="forum-category">
+            <a href="{$system['system_url']}/forums/{$forum['forum_id']}/{$forum['title_url']}">{__($forum['forum_name'])}</a>
+          </div>
+        {/if}
+        <!-- forum-category -->
+
+        <!-- childs (forums|sub-forums) -->
+        {if $forum['childs']}
+          <div class="row forum-head">
+            <div class="col-12 col-sm-8 column">
+              {if $forum['forum_section'] == '0'}{__("Forums")}{else}{__("Sub-Forums")}{/if}
+            </div>
+            <div class="col-sm-2 d-none d-sm-block column">
+              {__("Threads")}
+            </div>
+            <div class="col-sm-2 d-none d-sm-block column">
+              {__("Replies")}
+            </div>
+          </div>
+          {foreach $forum['childs'] as $_forum}
+            <div class="row forum-row">
+              <div class="col-sm-1 d-none d-sm-block column icon">
+                {include file='__svg_icons.tpl' icon="comments" class="main-icon" width="24px" height="24px"}
+              </div>
+              <div class="col-12 col-sm-7 column">
+                <div class="mb5">
+                  <strong><a href="{$system['system_url']}/forums/{$_forum['forum_id']}/{$_forum['title_url']}">{__($_forum['forum_name'])}</a></strong>
+                  <span class="visible-xs-inline-block">({$_forum['total_threads']} {__("Threads")} / {$_forum['total_replies']} {__("Replies")})</span>
+                </div>
+                <div class="mb5">
+                  {__($_forum['forum_description'])|nl2br}
+                </div>
+                {if $_forum['childs']}
+                  <div class="mb5"><strong>{__("Sub-Forums")}:</strong></div>
+                  <div>
+                    <ul class="sub-forums">
+                      {foreach $_forum['childs'] as $__forum}
+                        <li><a href="{$system['system_url']}/forums/{$__forum['forum_id']}/{$_forum['title_url']}">{__($__forum['forum_name'])}</a>{if !$__forum@last}, {/if}</li>
+                      {/foreach}
+                    </ul>
+                  </div>
                 {/if}
               </div>
-              <div class="fm-category-stats">
-                <span>{$forum['total_threads']|number_format:0} <small>{__("threads")}</small></span>
-                <span>{$forum['total_replies']|number_format:0} <small>{__("replies")}</small></span>
+              <div class="col-sm-2 d-none d-sm-block column text-center">
+                {$_forum['total_threads']}
+              </div>
+              <div class="col-sm-2 d-none d-sm-block column text-center">
+                {$_forum['total_replies']}
               </div>
             </div>
-            {if $forum['childs']}
-              <div class="fm-subforums">
-                {foreach $forum['childs'] as $_forum}
-                  <div class="fm-subforum-row">
-                    <div class="fm-subforum-left">
-                      <a href="{$system['system_url']}/forums/{$_forum['forum_id']}/{$_forum['title_url']}" class="fm-subforum-name">{__($_forum['forum_name'])}</a>
-                      {if $_forum['forum_description']}
-                        <p class="fm-subforum-desc">{__($_forum['forum_description'])|nl2br}</p>
-                      {/if}
-                      {if $_forum['childs']}
-                        <div class="fm-subforums-list">
-                          {foreach $_forum['childs'] as $__forum}
-                            <a href="{$system['system_url']}/forums/{$__forum['forum_id']}/{$_forum['title_url']}" class="fm-tag">{__($__forum['forum_name'])}</a>
-                          {/foreach}
-                        </div>
-                      {/if}
-                    </div>
-                    <div class="fm-subforum-meta">
-                      <span class="fm-meta-badge">{$_forum['total_threads']|number_format:0} {__("threads")}</span>
-                      <span class="fm-meta-badge">{$_forum['total_replies']|number_format:0} {__("replies")}</span>
-                    </div>
-                  </div>
-                {/foreach}
-              </div>
-            {/if}
-          </div>
-        {/foreach}
-        <!-- /forum categories -->
-
-        <!-- what's going on -->
-        {if $system['forums_online_enabled'] || $system['forums_statistics_enabled']}
-          <div class="fm-card fm-whats-on">
-            <div class="fm-card-head">{__("What's Going On?")}</div>
-            {if $system['forums_online_enabled']}
-              <div class="fm-online-row">
-                <strong>{__("Who's online")}</strong>
-                <span class="fm-badge fm-badge-primary">{count($online_users)|number_format:0}</span>
-              </div>
-              <div class="fm-online-users">
-                {foreach $online_users as $_user}
-                  <a href="{$system['system_url']}/{$_user['user_name']}" class="fm-online-chip">
-                    <img src="{$_user['user_picture']}" class="fm-micro-avatar">
-                    {if $system['show_usernames_enabled']}{$_user['user_name']}{else}{$_user['user_firstname']}{/if}
-                  </a>
-                {/foreach}
-              </div>
-            {/if}
-            {if $system['forums_statistics_enabled']}
-              <div class="fm-stats-row">
-                <div class="fm-stat-item">
-                  <span class="fm-stat-num">{$insights['threads']|number_format:0}</span>
-                  <span class="fm-stat-label">{__("Threads")}</span>
-                </div>
-                <div class="fm-stat-item">
-                  <span class="fm-stat-num">{$insights['replies']|number_format:0}</span>
-                  <span class="fm-stat-label">{__("Replies")}</span>
-                </div>
-                <div class="fm-stat-item">
-                  <span class="fm-stat-num">{$insights['users']|number_format:0}</span>
-                  <span class="fm-stat-label">{__("Members")}</span>
-                </div>
-              </div>
-            {/if}
-          </div>
+          {/foreach}
         {/if}
-        <!-- /what's going on -->
+        <!-- childs (forums|sub-forums) -->
 
-      </div>
-      <!-- /main column -->
-
-      <!-- sidebar -->
-      <div class="fm-sidebar">
-        {if $popular_tags}
-          <div class="fm-widget fm-tags-widget">
-            <div class="fm-widget-head">🏷️ {__("Popular Topics")}</div>
-            {foreach $popular_tags as $tag}
-              <a href="{$system['system_url']}/forums?tag={$tag['tag_slug']}" class="fm-topic-row">
-                <span class="fm-topic-dot" style="background:{$tag['tag_color']}"></span>
-                <span class="fm-topic-name">{$tag['tag_name']}</span>
-                <span class="fm-topic-count">{$tag['tag_posts']}</span>
-              </a>
-            {/foreach}
-          </div>
-        {/if}
-        {if $top_contributors}
-          <div class="fm-widget">
-            <div class="fm-widget-head">{__("Top Contributors")}</div>
-            {foreach $top_contributors as $idx => $contrib}
-              <div class="fm-contributor-row">
-                <span class="fm-contrib-rank">{$idx+1}</span>
-                <img src="{$contrib['user_picture']}" class="fm-sm-avatar">
-                <div class="fm-contrib-info">
-                  <a href="{$system['system_url']}/{$contrib['user_name']}" class="fm-contrib-name">
-                    {$contrib['user_fullname']}
-                    {if $contrib['user_verified'] == '1'}<span class="fm-verified">✓</span>{/if}
-                  </a>
-                  <span class="fm-contrib-meta">{$contrib['thread_count']}t · {$contrib['reply_count']}r</span>
-                </div>
-              </div>
-            {/foreach}
-          </div>
-        {/if}
-        {include file='_sidebar.tpl'}
-      </div>
-      <!-- /sidebar -->
-    </div>
-
-
-  {* ================================================================ *}
-  {* VIEW: FORUM (thread list)                                         *}
-  {* ================================================================ *}
-  {elseif $view == "forum"}
-
-    <!-- breadcrumb -->
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      {if $forum['parents']}
-        {foreach array_reverse($forum['parents']) as $parent}
-          <li><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
-        {/foreach}
-      {/if}
-      <li class="active">{__($forum['forum_name'])}</li>
-    </ol>
-    <!-- /breadcrumb -->
-
-    <div class="fm-layout">
-      <div class="fm-main">
-
-        <!-- forum header card -->
-        <div class="fm-forum-hero">
-          <div class="fm-forum-hero-text">
-            <h2>{__($forum['forum_name'])}</h2>
-            {if $forum['forum_description']}<p>{__($forum['forum_description']|nl2br)}</p>{/if}
-          </div>
-          {if $forum['forum_section'] != '0' && $user->_logged_in}
-            <a href="{$system['system_url']}/forums/new-thread/{$forum['forum_id']}" class="fm-btn fm-btn-primary">
-              + {__("New Thread")}
-            </a>
-          {/if}
-        </div>
-        <!-- /forum header card -->
-
-        <!-- sub-forums -->
-        {if $forum['childs']}
-          <div class="fm-category-card">
-            <div class="fm-card-head">{if $forum['forum_section'] == '0'}{__("Forums")}{else}{__("Sub-Forums")}{/if}</div>
-            {foreach $forum['childs'] as $_forum}
-              <div class="fm-subforum-row">
-                <div class="fm-subforum-left">
-                  <a href="{$system['system_url']}/forums/{$_forum['forum_id']}/{$_forum['title_url']}" class="fm-subforum-name">{__($_forum['forum_name'])}</a>
-                  {if $_forum['forum_description']}<p class="fm-subforum-desc">{__($_forum['forum_description'])|nl2br}</p>{/if}
-                </div>
-                <div class="fm-subforum-meta">
-                  <span class="fm-meta-badge">{$_forum['total_threads']|number_format:0} {__("threads")}</span>
-                  <span class="fm-meta-badge">{$_forum['total_replies']|number_format:0} {__("replies")}</span>
-                </div>
-              </div>
-            {/foreach}
-          </div>
-        {/if}
-        <!-- /sub-forums -->
-
-        <!-- sort tabs -->
+        <!-- threads -->
         {if $forum['forum_section'] != '0'}
-          <div class="fm-sort-bar">
-            <div class="fm-sort-tabs">
-              <a href="?sort=newest"    class="fm-sort-tab {if $sort == 'newest' || !$sort}active{/if}">{__("Newest")}</a>
-              <a href="?sort=hot"       class="fm-sort-tab {if $sort == 'hot'}active{/if}">{__("Hot 🔥")}</a>
-              <a href="?sort=top"       class="fm-sort-tab {if $sort == 'top'}active{/if}">{__("Top ⬆")}</a>
-              <a href="?sort=rising"    class="fm-sort-tab {if $sort == 'rising'}active{/if}">{__("Rising 📈")}</a>
-              <a href="?sort=q&a"       class="fm-sort-tab {if $sort == 'q&a'}active{/if}">{__("Q&A ❓")}</a>
-              <a href="?sort=unanswered" class="fm-sort-tab {if $sort == 'unanswered'}active{/if}">{__("Unanswered")}</a>
+          <div class="row forum-head threads">
+            <div class="col-12 col-sm-8 column">
+              {__("Thread")}
             </div>
-            {if $user->_logged_in}
-              <a href="{$system['system_url']}/forums/new-thread/{$forum['forum_id']}" class="fm-btn fm-btn-sm fm-btn-primary">+ {__("Thread")}</a>
-            {/if}
+            <div class="col-sm-2 d-none d-sm-block column">
+              {__("Replies")} / {__("Views")}
+            </div>
+            <div class="col-sm-2 d-none d-sm-block column">
+              {__("Last Post")}
+            </div>
           </div>
-        {/if}
-        <!-- /sort tabs -->
-
-        <!-- thread list -->
-        {if $forum['forum_section'] != '0'}
           {if $forum['threads']}
             {foreach $forum['threads'] as $thread}
-              {include file='__forum_thread_card.tpl'}
+              <div class="row forum-row">
+                <div class="col-12 col-sm-8 column">
+                  <div class="mb5">
+                    <strong><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']}</a></strong>
+                  </div>
+                  <div class="mb5">
+                    {__("By")}: <a href="{$system['system_url']}/{$thread['user_name']}">{$thread['user_fullname']}</a> <span class="js_moment" data-time="{$thread['time']}">{$thread['time']}</span>
+                  </div>
+                </div>
+                <div class="col-sm-2 d-none d-sm-block column text-center">
+                  {__("Replies")}: {$thread['replies']}<br>{__("Views")}: {$thread['views']}
+                </div>
+                <div class="col-sm-2 d-none d-sm-block column text-center">
+                  <span class="js_moment" data-time="{$thread['last_reply']}">{$thread['last_reply']}</span>
+                </div>
+              </div>
             {/foreach}
             {$pager}
           {else}
-            <div class="fm-empty">
-              <p>{if $sort == 'unanswered'}{__("No unanswered threads!")}{else}{__("No threads yet. Be the first to post!")}{/if}</p>
-              {if $user->_logged_in}
-                <a href="{$system['system_url']}/forums/new-thread/{$forum['forum_id']}" class="fm-btn fm-btn-primary">+ {__("New Thread")}</a>
-              {/if}
+            <div class="row forum-row">
+              <div class="col-12 column text-center">
+                {__("No Threads")}
+              </div>
             </div>
           {/if}
         {/if}
-        <!-- /thread list -->
+        <!-- threads -->
 
-      </div>
+      {elseif $view == "thread"}
 
-      <!-- sidebar -->
-      <div class="fm-sidebar">
-        <div class="fm-widget">
-          <div class="fm-widget-head">{__("Forum Stats")}</div>
-          <div class="fm-widget-row">
-            <span>{__("Threads")}</span>
-            <strong>{$forum['total_threads']|number_format:0}</strong>
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          {if $thread['forum']['parents']}
+            {foreach array_reverse($thread['forum']['parents']) as $parent}
+              <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
+            {/foreach}
+          {/if}
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></li>
+          <li class="breadcrumb-item active">{$thread['title']}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- thread title -->
+        <div class="forum-title clearfix">
+          <div class="float-end">
+            <a href="{$system['system_url']}/forums/new-reply/{$thread['thread_id']}" class="btn btn-md btn-primary">
+              <i class="fa fa-reply mr10"></i>{__("Post Reply")}
+            </a>
           </div>
-          <div class="fm-widget-row">
-            <span>{__("Replies")}</span>
-            <strong>{$forum['total_replies']|number_format:0}</strong>
-          </div>
+          <h1>{$thread['title']}</h1>
         </div>
-        {include file='_sidebar.tpl'}
-      </div>
-      <!-- /sidebar -->
-    </div>
+        <!-- thread title -->
 
-
-  {* ================================================================ *}
-  {* VIEW: THREAD (single thread + replies)                            *}
-  {* ================================================================ *}
-  {elseif $view == "thread"}
-
-    <!-- breadcrumb -->
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      {if $thread['forum']['parents']}
-        {foreach array_reverse($thread['forum']['parents']) as $parent}
-          <li><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
-        {/foreach}
-      {/if}
-      <li><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></li>
-      <li class="active">{$thread['title']|truncate:50}</li>
-    </ol>
-    <!-- /breadcrumb -->
-
-    <div class="fm-layout">
-      <div class="fm-main">
-
-        <!-- thread post -->
-        <div class="fm-thread-post {if $thread['replies'] > 0 && $selected_page != 1}x-hidden{/if}">
-
-          <!-- vote column -->
-          <div class="fm-vote-col" data-item-id="{$thread['thread_id']}" data-item-type="thread">
-            <button class="fm-vote-btn fm-vote-up {if $thread['votes']['my_vote'] == 'up'}active{/if}"
-                    onclick="forumVote(this,'up','thread',{$thread['thread_id']})" title="{__('Upvote')}">
-              ▲
-            </button>
-            <span class="fm-vote-score" id="score-thread-{$thread['thread_id']}">{$thread['votes']['score']}</span>
-            <button class="fm-vote-btn fm-vote-down {if $thread['votes']['my_vote'] == 'down'}active{/if}"
-                    onclick="forumVote(this,'down','thread',{$thread['thread_id']})" title="{__('Downvote')}">
-              ▼
-            </button>
-          </div>
-          <!-- /vote column -->
-
-          <!-- thread content -->
-          <div class="fm-thread-body">
-            <div class="fm-thread-meta-top">
-              <img src="{$thread['user_picture']}" class="fm-sm-avatar">
-              <span class="fm-author">
+        <!-- thread -->
+        <div class="forum-thread {if $thread['replies'] > 0 && $selected_page != 1}x-hidden{/if}">
+          <div class="row">
+            <div class="col-12 col-sm-2 text-center">
+              <a href="{$system['system_url']}/{$thread['user_name']}"><img class="avatar" src="{$thread['user_picture']}"></a>
+              <h6 class="mt10">
                 <a href="{$system['system_url']}/{$thread['user_name']}">{$thread['user_fullname']}</a>
+              </h6>
+              <div class="mb5">
                 {if $thread['user_group'] == 1}
-                  <span class="fm-role fm-role-admin">{__("Admin")}</span>
+                  <i class="fa fa-shield-alt"></i> {__("Admin")}
                 {elseif $thread['user_group'] == 2}
-                  <span class="fm-role fm-role-mod">{__("Mod")}</span>
-                {/if}
-              </span>
-              <span class="fm-dot">·</span>
-              <span class="fm-time js_moment" data-time="{$thread['time']}">{$thread['time']}</span>
-              <span class="fm-dot">·</span>
-              <span class="fm-views">{$thread['views']|number_format:0} {__("views")}</span>
-
-              <!-- action buttons -->
-              <div class="fm-thread-actions">
-                {if $thread['manage_thread']}
-                  <a href="{$system['system_url']}/forums/edit-thread/{$thread['thread_id']}" class="fm-action-btn" title="{__('Edit')}">
-                    <i class="fa fa-pencil-alt"></i>
-                  </a>
-                  <button class="fm-action-btn js_delete-forum" data-handle="thread" data-id="{$thread['thread_id']}" title="{__('Delete')}">
-                    <i class="fa fa-trash-alt"></i>
-                  </button>
+                  <i class="fab fa-black-tie"></i> {__("Moderator")}
                 {else}
-                  <button class="fm-action-btn" data-toggle="modal" data-url="data/report.php?do=create&handle=forum_thread&id={$thread['thread_id']}" title="{__('Report')}">
-                    <i class="fa fa-flag"></i>
-                  </button>
+                  <i class="fa fa-user"></i> {__("Member")}
                 {/if}
               </div>
-              <!-- /action buttons -->
+              <div>
+                <small>{__("Joined")}: <span class="js_moment" data-time="{$thread['user_registered']}">{$thread['user_registered']}</span></small>
+              </div>
             </div>
-
-            <h1 class="fm-thread-title">{$thread['title']}</h1>
-
-            <div class="fm-thread-text">
-              {$thread['parsed_text']}
-            </div>
-
-            <div class="fm-thread-footer">
-              <a href="{$system['system_url']}/forums/new-reply/{$thread['thread_id']}" class="fm-btn fm-btn-reply">
-                <i class="fa fa-reply mr5"></i>{__("Reply")}
-              </a>
-              <span class="fm-footer-count">{$thread['replies']|number_format:0} {__("replies")}</span>
+            <div class="col-12 col-sm-10">
+              <div class="time clearfix">
+                <!-- buttons -->
+                <div class="float-end">
+                  {if $thread['manage_thread']}
+                    <a data-bs-toggle="tooltip" title='{__("Edit")}' href="{$system['system_url']}/forums/edit-thread/{$thread['thread_id']}" class="btn btn-sm btn-light btn-icon btn-rounded">
+                      <i class="fa fa-pencil-alt"></i>
+                    </a>
+                    <button data-bs-toggle="tooltip" title='{__("Delete")}' class="btn btn-sm btn-light btn-icon btn-rounded js_delete-forum" data-handle="thread" data-id="{$thread['thread_id']}">
+                      <i class="fa fa-trash-alt"></i>
+                    </button>
+                  {else}
+                    <button data-bs-toggle="tooltip" title='{__("Report")}' class="btn btn-sm btn-light btn-icon btn-rounded" data-toggle="modal" data-url="data/report.php?do=create&handle=forum_thread&id={$thread['thread_id']}">
+                      <i class="fa fa-flag fa-fw"></i>
+                    </button>
+                  {/if}
+                </div>
+                <!-- buttons -->
+                <!-- time -->
+                <small><i class="far fa-clock"></i> <span class="js_moment" data-time="{$thread['time']}">{$thread['time']}</span></small>
+                <!-- time -->
+              </div>
+              <div class="text">
+                {$thread['parsed_text']}
+              </div>
             </div>
           </div>
-          <!-- /thread content -->
-
         </div>
-        <!-- /thread post -->
+        <!-- thread -->
 
         <!-- replies -->
         {if $thread['replies'] > 0}
-          <div class="fm-replies-head">{$thread['replies']|number_format:0} {__("Replies")}</div>
           {foreach $thread['thread_replies'] as $reply}
-            <div class="fm-reply-card {if $reply['reply_id'] == $thread['best_reply_id']}fm-best-answer{/if}" id="reply-{$reply['reply_id']}">
-
-              {if $reply['reply_id'] == $thread['best_reply_id']}
-                <div class="fm-best-answer-badge">✅ {__("Best Answer")}</div>
-              {/if}
-
-              <!-- vote column -->
-              <div class="fm-vote-col" data-item-id="{$reply['reply_id']}" data-item-type="reply">
-                <button class="fm-vote-btn fm-vote-up {if $reply['votes']['my_vote'] == 'up'}active{/if}"
-                        onclick="forumVote(this,'up','reply',{$reply['reply_id']})" title="{__('Upvote')}">
-                  ▲
-                </button>
-                <span class="fm-vote-score" id="score-reply-{$reply['reply_id']}">{$reply['votes']['score']}</span>
-                <button class="fm-vote-btn fm-vote-down {if $reply['votes']['my_vote'] == 'down'}active{/if}"
-                        onclick="forumVote(this,'down','reply',{$reply['reply_id']})" title="{__('Downvote')}">
-                  ▼
-                </button>
-              </div>
-              <!-- /vote column -->
-
-              <!-- reply content -->
-              <div class="fm-reply-body">
-                <div class="fm-thread-meta-top">
-                  <img src="{$reply['user_picture']}" class="fm-sm-avatar">
-                  <span class="fm-author">
+            <div class="forum-thread" id="reply-{$reply['reply_id']}">
+              <div class="row">
+                <div class="col-12 col-sm-2 text-center">
+                  <a href="{$system['system_url']}/{$reply['user_name']}"><img class="avatar" src="{$reply['user_picture']}"></a>
+                  <h6 class="mt10">
                     <a href="{$system['system_url']}/{$reply['user_name']}">{$reply['user_fullname']}</a>
+                  </h6>
+                  <div class="mb5">
                     {if $reply['user_group'] == 1}
-                      <span class="fm-role fm-role-admin">{__("Admin")}</span>
+                      <i class="fa fa-shield-alt"></i> {__("Admin")}
                     {elseif $reply['user_group'] == 2}
-                      <span class="fm-role fm-role-mod">{__("Mod")}</span>
-                    {/if}
-                  </span>
-                  <span class="fm-dot">·</span>
-                  <span class="fm-time js_moment" data-time="{$reply['time']}">{$reply['time']}</span>
-
-                  <!-- reply actions -->
-                  <div class="fm-thread-actions">
-                    <a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}#reply-{$reply['reply_id']}"
-                       class="fm-action-btn" title="{__('Link')}">
-                      <i class="fa fa-link"></i>
-                    </a>
-                    {if $user->_logged_in && $user->_data['user_id'] == $thread['user_id']}
-                      <button class="fm-action-btn fm-mark-best-btn"
-                              data-thread="{$thread['thread_id']}" data-reply="{$reply['reply_id']}"
-                              title="{if $reply['reply_id'] == $thread['best_reply_id']}{__('Unmark Best Answer')}{else}{__('Mark as Best Answer')}{/if}">
-                        {if $reply['reply_id'] == $thread['best_reply_id']}✅{else}☑{/if}
-                      </button>
-                    {/if}
-                    {if $reply['manage_reply']}
-                      <a href="{$system['system_url']}/forums/edit-reply/{$reply['reply_id']}" class="fm-action-btn" title="{__('Edit')}">
-                        <i class="fa fa-pencil-alt"></i>
-                      </a>
-                      <button class="fm-action-btn js_delete-forum" data-handle="reply" data-id="{$reply['reply_id']}" title="{__('Delete')}">
-                        <i class="fa fa-trash-alt"></i>
-                      </button>
+                      <i class="fab fa-black-tie"></i> {__("Moderator")}
                     {else}
-                      <button class="fm-action-btn" data-toggle="modal" data-url="data/report.php?do=create&handle=forum_reply&id={$reply['reply_id']}" title="{__('Report')}">
-                        <i class="fa fa-flag"></i>
-                      </button>
+                      <i class="fa fa-user"></i> {__("Member")}
                     {/if}
                   </div>
-                  <!-- /reply actions -->
+                  <div>
+                    <small>{__("Joined")}: <span class="js_moment" data-time="{$reply['user_registered']}">{$reply['user_registered']}</span></small>
+                  </div>
                 </div>
-
-                <div class="fm-reply-text">
-                  {$reply['parsed_text']}
+                <div class="col-12 col-sm-10">
+                  <div class="time clearfix">
+                    <!-- buttons -->
+                    <div class="float-end">
+                      <a data-bs-toggle="tooltip" title='{__("Link")}' href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}#reply-{$reply['reply_id']}" class="btn btn-sm btn-light btn-icon btn-rounded">
+                        <i class="fa fa-link"></i>
+                      </a>
+                      {if $reply['manage_reply']}
+                        <a data-bs-toggle="tooltip" title='{__("Edit")}' href="{$system['system_url']}/forums/edit-reply/{$reply['reply_id']}" class="btn btn-sm btn-light btn-icon btn-rounded">
+                          <i class="fa fa-pencil-alt"></i>
+                        </a>
+                        <button data-bs-toggle="tooltip" title='{__("Delete")}' class="btn btn-sm btn-light btn-icon btn-rounded js_delete-forum" data-handle="reply" data-id="{$reply['reply_id']}">
+                          <i class="fa fa-trash-alt"></i>
+                        </button>
+                      {else}
+                        <button data-bs-toggle="tooltip" title='{__("Report")}' class="btn btn-sm btn-light btn-icon btn-rounded" data-toggle="modal" data-url="data/report.php?do=create&handle=forum_reply&id={$reply['reply_id']}">
+                          <i class="fa fa-flag fa-fw"></i>
+                        </button>
+                      {/if}
+                    </div>
+                    <!-- buttons -->
+                    <!-- time -->
+                    <small><i class="far fa-clock"></i> <span class="js_moment" data-time="{$reply['time']}">{$reply['time']}</span></small>
+                    <!-- time -->
+                  </div>
+                  <div class="text">
+                    {$reply['parsed_text']}
+                  </div>
                 </div>
               </div>
-              <!-- /reply content -->
-
             </div>
           {/foreach}
-          <div class="fm-pager">{$pager}</div>
-        {/if}
-        <!-- /replies -->
-
-        <!-- reply CTA -->
-        {if $user->_logged_in}
-          <div class="fm-reply-cta">
-            <a href="{$system['system_url']}/forums/new-reply/{$thread['thread_id']}" class="fm-btn fm-btn-primary">
-              <i class="fa fa-reply mr5"></i>{__("Post a Reply")}
-            </a>
+          <div class="mt10">
+            {$pager}
           </div>
         {/if}
-        <!-- /reply CTA -->
+        <!-- replies -->
 
-      </div>
+      {elseif $view == "new-thread"}
 
-      <!-- sidebar -->
-      <div class="fm-sidebar">
-        <div class="fm-widget">
-          <div class="fm-widget-head">{__("Thread Info")}</div>
-          <div class="fm-widget-row"><span>{__("Views")}</span><strong>{$thread['views']|number_format:0}</strong></div>
-          <div class="fm-widget-row"><span>{__("Replies")}</span><strong>{$thread['replies']|number_format:0}</strong></div>
-          <div class="fm-widget-row"><span>{__("Forum")}</span><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></div>
-        </div>
-        {include file='_sidebar.tpl'}
-      </div>
-      <!-- /sidebar -->
-    </div>
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          {if $forum['parents']}
+            {foreach array_reverse($forum['parents']) as $parent}
+              <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
+            {/foreach}
+          {/if}
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$forum['forum_id']}/{$forum['title_url']}">{__($forum['forum_name'])}</a></li>
+          <li class="breadcrumb-item active">{__("Write New Thread")}</li>
+        </ol>
+        <!-- breadcrumb -->
 
-    <!-- vote + best-answer JS -->
-    <script>
-    function forumVote(btn, voteType, itemType, itemId) {
-      {if !$user->_logged_in}
-        window.location.href = '{$system['system_url']}/login';
-        return;
-      {/if}
-      var scoreEl = document.getElementById('score-' + itemType + '-' + itemId);
-      var col = btn.closest('.fm-vote-col');
-
-      fetch('{$system['system_url']}/includes/ajax/forums/vote.php', {
-        method: 'POST',
-        headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
-        body: 'item_id=' + itemId + '&item_type=' + itemType + '&vote_type=' + voteType
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.error) return;
-        scoreEl.textContent = data.score;
-        col.querySelectorAll('.fm-vote-btn').forEach(b => b.classList.remove('active'));
-        if (data.my_vote) {
-          col.querySelector('.fm-vote-' + data.my_vote).classList.add('active');
-        }
-      });
-    }
-
-    document.querySelectorAll('.fm-mark-best-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var threadId = this.dataset.thread;
-        var replyId  = this.dataset.reply;
-        fetch('{$system['system_url']}/includes/ajax/forums/best-answer.php', {
-          method: 'POST',
-          headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
-          body: 'thread_id=' + threadId + '&reply_id=' + replyId
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (!data.error) location.reload();
-        });
-      });
-    });
-    </script>
-    <!-- /vote + best-answer JS -->
-
-
-  {* ================================================================ *}
-  {* VIEW: NEW THREAD                                                  *}
-  {* ================================================================ *}
-  {elseif $view == "new-thread"}
-
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      {if $forum['parents']}
-        {foreach array_reverse($forum['parents']) as $parent}
-          <li><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
-        {/foreach}
-      {/if}
-      <li><a href="{$system['system_url']}/forums/{$forum['forum_id']}/{$forum['title_url']}">{__($forum['forum_name'])}</a></li>
-      <li class="active">{__("New Thread")}</li>
-    </ol>
-
-    <div class="fm-form-card">
-      <div class="fm-form-head">{__("Write New Thread")}</div>
-      <form class="js_ajax-forms" data-url="forums/thread.php?do=create&id={$forum['forum_id']}">
-        <div class="fm-form-body">
-          <div class="fm-form-group">
-            <label class="fm-label">{__("Title")}</label>
-            <input class="fm-input" name="title" placeholder="{__('Enter thread title...')}">
+        <!-- new thread -->
+        <div class="card mt20">
+          <div class="card-header with-icon">
+            {__("Write New Thread")}
           </div>
-          <div class="fm-form-group">
-            <label class="fm-label">{__("Content")}</label>
-            <textarea name="text" class="fm-input fm-textarea js_wysiwyg" placeholder="{__('Write your thread content...')}"></textarea>
-          </div>
-          <div class="alert alert-danger mt15 mb0 x-hidden"></div>
-        </div>
-        <div class="fm-form-footer">
-          <button type="submit" class="fm-btn fm-btn-primary">{__("Publish")}</button>
-          <a href="{$system['system_url']}/forums/{$forum['forum_id']}/{$forum['title_url']}" class="fm-btn fm-btn-ghost">{__("Cancel")}</a>
-        </div>
-      </form>
-    </div>
-
-
-  {* ================================================================ *}
-  {* VIEW: EDIT THREAD                                                 *}
-  {* ================================================================ *}
-  {elseif $view == "edit-thread"}
-
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      <li><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></li>
-      <li><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']|truncate:40}</a></li>
-      <li class="active">{__("Edit")}</li>
-    </ol>
-
-    <div class="fm-form-card">
-      <div class="fm-form-head">{__("Edit Thread")}</div>
-      <form class="js_ajax-forms" data-url="forums/thread.php?do=edit&id={$thread['thread_id']}">
-        <div class="fm-form-body">
-          <div class="fm-form-group">
-            <label class="fm-label">{__("Title")}</label>
-            <input class="fm-input" name="title" value="{$thread['title']}">
-          </div>
-          <div class="fm-form-group">
-            <label class="fm-label">{__("Content")}</label>
-            <textarea name="text" class="fm-input fm-textarea js_wysiwyg">{$thread['text']}</textarea>
-          </div>
-          <div class="alert alert-danger mt15 mb0 x-hidden"></div>
-        </div>
-        <div class="fm-form-footer">
-          <button type="submit" class="fm-btn fm-btn-primary">{__("Update")}</button>
-          <a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}" class="fm-btn fm-btn-ghost">{__("Cancel")}</a>
-        </div>
-      </form>
-    </div>
-
-
-  {* ================================================================ *}
-  {* VIEW: NEW REPLY                                                   *}
-  {* ================================================================ *}
-  {elseif $view == "new-reply"}
-
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      <li><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></li>
-      <li><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']|truncate:40}</a></li>
-      <li class="active">{__("Reply")}</li>
-    </ol>
-
-    <div class="fm-form-card">
-      <div class="fm-form-head">{__("Post Reply")} — <a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']}</a></div>
-      <form class="js_ajax-forms" data-url="forums/reply.php?do=create&id={$thread['thread_id']}">
-        <div class="fm-form-body">
-          <div class="fm-form-group">
-            <textarea name="text" class="fm-input fm-textarea js_wysiwyg" placeholder="{__('Write your reply...')}"></textarea>
-          </div>
-          <div class="alert alert-danger mt15 mb0 x-hidden"></div>
-        </div>
-        <div class="fm-form-footer">
-          <button type="submit" class="fm-btn fm-btn-primary">{__("Reply")}</button>
-          <a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}" class="fm-btn fm-btn-ghost">{__("Cancel")}</a>
-        </div>
-      </form>
-    </div>
-
-
-  {* ================================================================ *}
-  {* VIEW: EDIT REPLY                                                  *}
-  {* ================================================================ *}
-  {elseif $view == "edit-reply"}
-
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      <li><a href="{$system['system_url']}/forums/thread/{$reply['thread']['thread_id']}/{$reply['thread']['title_url']}">{$reply['thread']['title']|truncate:40}</a></li>
-      <li class="active">{__("Edit Reply")}</li>
-    </ol>
-
-    <div class="fm-form-card">
-      <div class="fm-form-head">{__("Edit Reply")}</div>
-      <form class="js_ajax-forms" data-url="forums/reply.php?do=edit&id={$reply['reply_id']}">
-        <div class="fm-form-body">
-          <div class="fm-form-group">
-            <textarea name="text" class="fm-input fm-textarea js_wysiwyg">{$reply['text']}</textarea>
-          </div>
-          <div class="alert alert-danger mt15 mb0 x-hidden"></div>
-        </div>
-        <div class="fm-form-footer">
-          <button type="submit" class="fm-btn fm-btn-primary">{__("Update")}</button>
-        </div>
-      </form>
-    </div>
-
-
-  {* ================================================================ *}
-  {* VIEW: MY THREADS / MY REPLIES / SEARCH / SEARCH-RESULTS          *}
-  {* ================================================================ *}
-  {elseif $view == "my-threads" || $view == "my-replies" || $view == "search" || $view == "search-results"}
-
-    <ol class="fm-breadcrumb">
-      <li><a href="{$system['system_url']}/forums">{__("Forums")}</a></li>
-      <li class="active">
-        {if $view == "my-threads"}{__("My Threads")}
-        {elseif $view == "my-replies"}{__("My Replies")}
-        {elseif $view == "search"}{__("Search")}
-        {else}{__("Search Results")}{/if}
-      </li>
-    </ol>
-
-    <div class="fm-layout">
-      <div class="fm-main">
-
-        {if $view == "search" || $view == "search-results"}
-          <!-- search form -->
-          <div class="fm-form-card">
-            <form action="{$system['system_url']}/forums/search-results" method="get">
-              <div class="fm-search-bar">
-                <input class="fm-input" name="query" placeholder="{__('Search forums...')}" value="{if $query}{$query}{/if}" autofocus required>
-                <select class="fm-select" name="type">
-                  <option value="threads">{__("Threads")}</option>
-                  <option value="replies">{__("Replies")}</option>
-                </select>
-                <select class="fm-select" name="forum">
-                  <option value="all">{__("All Forums")}</option>
-                  {foreach $forums as $forum}
-                    {include file='admin.forums.recursive_options.tpl'}
-                  {/foreach}
-                </select>
-                <button type="submit" class="fm-btn fm-btn-primary">{__("Search")}</button>
-              </div>
-              <div class="fm-form-body" style="padding-top:0">
-                <label class="fm-checkbox-label">
-                  <input type="checkbox" name="recursive"> {__("Also search in child forums")}
+          <form class="js_ajax-forms" data-url="forums/thread.php?do=create&id={$forum['forum_id']}">
+            <div class="card-body">
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Title")}
                 </label>
+                <div class="col-md-10">
+                  <input class="form-control" name="title">
+                </div>
               </div>
-            </form>
-          </div>
-          <!-- /search form -->
-        {/if}
 
-        {if $view == "search-results"}
-          <div class="fm-results-info">
-            {__("Results for")} "<strong>{$query}</strong>" — <span class="fm-badge fm-badge-primary">{if $total}{$total}{else}0{/if}</span> {__("found")}
-          </div>
-        {/if}
-
-        <!-- thread / reply list -->
-        {if $view == "my-threads"}
-          {assign var="items" value=$threads}
-        {elseif $view == "my-replies"}
-          {assign var="items" value=$replies}
-        {elseif $view == "search-results" && $type == "threads"}
-          {assign var="items" value=$results}
-        {elseif $view == "search-results" && $type == "replies"}
-          {assign var="items" value=$results}
-        {/if}
-
-        {if $items}
-          {foreach $items as $item}
-            <div class="fm-result-card">
-              <div class="fm-result-meta">
-                <span class="fm-time js_moment" data-time="{if $item['time']}{$item['time']}{else}{$item['thread']['time']}{/if}">
-                  {if $item['time']}{$item['time']}{else}{$item['thread']['time']}{/if}
-                </span>
-                <span class="fm-dot">·</span>
-                <a href="{$system['system_url']}/forums/{if $item['forum']}{$item['forum']['forum_id']}/{$item['forum']['title_url']}{elseif $item['thread']['forum']}{$item['thread']['forum']['forum_id']}/{$item['thread']['forum']['title_url']}{/if}" class="fm-tag">
-                  {if $item['forum']}{__($item['forum']['forum_name'])}{elseif $item['thread']['forum']}{__($item['thread']['forum']['forum_name'])}{/if}
-                </a>
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Content")}
+                </label>
+                <div class="col-md-10">
+                  <textarea name="text" class="form-control js_wysiwyg"></textarea>
+                </div>
               </div>
-              <h3 class="fm-result-title">
-                <a href="{$system['system_url']}/forums/thread/{if $item['thread_id']}{$item['thread_id']}/{$item['title_url']}{else}{$item['thread']['thread_id']}/{$item['thread']['title_url']}{/if}">
-                  {if $item['title']}{$item['title']}{else}{$item['thread']['title']}{/if}
-                </a>
-              </h3>
-              <p class="fm-result-snippet">{if $item['text_snippet']}{$item['text_snippet']|truncate:200}{/if}</p>
-              <div class="fm-result-footer">
-                <span>{if isset($item['replies'])}{$item['replies']|number_format:0} {__("replies")}{/if}</span>
-                <span>{if isset($item['views'])}{$item['views']|number_format:0} {__("views")}{/if}</span>
+
+              <!-- error -->
+              <div class="alert alert-danger mt15 mb0 x-hidden"></div>
+              <!-- error -->
+            </div>
+            <div class="card-footer text-end">
+              <button type="submit" class="btn btn-primary">{__("Publish")}</button>
+            </div>
+          </form>
+        </div>
+        <!-- new thread -->
+
+      {elseif $view == "edit-thread"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          {if $thread['forum']['parents']}
+            {foreach array_reverse($thread['forum']['parents']) as $parent}
+              <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
+            {/foreach}
+          {/if}
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></li>
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']}</a></li>
+          <li class="breadcrumb-item active">{__("Edit Thread")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- edit thread -->
+        <div class="card mt20">
+          <div class="card-header with-icon">
+            {__("Edit Thread")}
+          </div>
+          <form class="js_ajax-forms" data-url="forums/thread.php?do=edit&id={$thread['thread_id']}">
+            <div class="card-body">
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Title")}
+                </label>
+                <div class="col-md-10">
+                  <input class="form-control" name="title" value="{$thread['title']}">
+                </div>
+              </div>
+
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Content")}
+                </label>
+                <div class="col-md-10">
+                  <textarea name="text" class="form-control js_wysiwyg">{$thread['text']}</textarea>
+                </div>
+              </div>
+
+              <!-- error -->
+              <div class="alert alert-danger mt15 mb0 x-hidden"></div>
+              <!-- error -->
+            </div>
+            <div class="card-footer text-end">
+              <button type="submit" class="btn btn-primary">{__("Update")}</button>
+            </div>
+          </form>
+        </div>
+        <!-- edit thread -->
+
+      {elseif $view == "new-reply"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          {if $thread['forum']['parents']}
+            {foreach array_reverse($thread['forum']['parents']) as $parent}
+              <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
+            {/foreach}
+          {/if}
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a></li>
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']}</a></li>
+          <li class="breadcrumb-item active">{__("Post Reply")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- new reply -->
+        <div class="card mt20">
+          <div class="card-header with-icon">
+            {__("Post Reply")}
+          </div>
+          <form class="js_ajax-forms" data-url="forums/reply.php?do=create&id={$thread['thread_id']}">
+            <div class="card-body">
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Content")}
+                </label>
+                <div class="col-md-10">
+                  <textarea name="text" class="form-control js_wysiwyg"></textarea>
+                </div>
+              </div>
+
+              <!-- error -->
+              <div class="alert alert-danger mt15 mb0 x-hidden"></div>
+              <!-- error -->
+            </div>
+            <div class="card-footer text-end">
+              <button type="submit" class="btn btn-primary">{__("Reply")}</button>
+            </div>
+          </form>
+        </div>
+        <!-- new reply -->
+
+      {elseif $view == "edit-reply"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          {if $reply['thread']['forum']['parents']}
+            {foreach array_reverse($reply['thread']['forum']['parents']) as $parent}
+              <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$parent['forum_id']}/{$parent['title_url']}">{__($parent['forum_name'])}</a></li>
+            {/foreach}
+          {/if}
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/{$reply['thread']['forum']['forum_id']}/{$reply['thread']['forum']['title_url']}">{__($reply['thread']['forum']['forum_name'])}</a></li>
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/thread/{$reply['thread']['thread_id']}/{$reply['thread']['title_url']}">{$reply['thread']['title']}</a></li>
+          <li class="breadcrumb-item active">{__("Edit Reply")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- new reply -->
+        <div class="card mt20">
+          <div class="card-header with-icon">
+            <i class="fa fa-reply mr10"></i>{__("Edit Reply")}
+          </div>
+          <form class="js_ajax-forms" data-url="forums/reply.php?do=edit&id={$reply['reply_id']}">
+            <div class="card-body">
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Content")}
+                </label>
+                <div class="col-md-10">
+                  <textarea name="text" class="form-control js_wysiwyg">{$reply['text']}</textarea>
+                </div>
+              </div>
+
+              <!-- error -->
+              <div class="alert alert-danger mt15 mb0 x-hidden"></div>
+              <!-- error -->
+            </div>
+            <div class="card-footer text-end">
+              <button type="submit" class="btn btn-primary">{__("Update")}</button>
+            </div>
+          </form>
+        </div>
+        <!-- new reply -->
+
+      {elseif $view == "my-threads"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          <li class="breadcrumb-item active">{__("My Threads")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- threads -->
+        {if $threads}
+          {foreach $threads as $thread}
+            <div class="forum-result">
+              <div class="head">
+                <div class="float-end">
+                  {__("Forum")}: <a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a>
+                </div>
+                <i class="far fa-clock mr5"></i><span class="js_moment" data-time="{$thread['time']}">{$thread['time']}</span>
+              </div>
+              <div class="content">
+                <div class="mb10">
+                  <div class="mb5">
+                    <strong class="title"><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']}</a></strong>
+                    <div class="float-end text-end">
+                      {__("Replies")}: <strong>{$thread['replies']}</strong><br>
+                      {__("Views")}: <strong>{$thread['views']}</strong>
+                    </div>
+                  </div>
+                  <div class="mb5">
+                    {__("By")}: <a href="{$system['system_url']}/{$thread['user_name']}">{$thread['user_fullname']}</a> <span class="js_moment" data-time="{$thread['time']}">{$thread['time']}</span>
+                  </div>
+                </div>
+                <div class="snippet">
+                  {$thread['text_snippet']|truncate:300}
+                </div>
               </div>
             </div>
           {/foreach}
-          <div class="fm-pager">{$pager}</div>
-        {elseif $view != "search"}
+          <div class="mt20">
+            {$pager}
+          </div>
+        {else}
           {include file='_no_data.tpl'}
         {/if}
-        <!-- /list -->
+        <!-- threads -->
 
-      </div>
+      {elseif $view == "my-replies"}
 
-      <div class="fm-sidebar">
-        {include file='_sidebar.tpl'}
-      </div>
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          <li class="breadcrumb-item active">{__("My Replies")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- replies -->
+        {if $replies}
+          {foreach $replies as $reply}
+            <div class="forum-result">
+              <div class="head">
+                <div class="float-end">
+                  {__("Forum")}: <a href="{$system['system_url']}/forums/{$reply['thread']['forum']['forum_id']}/{$reply['thread']['forum']['title_url']}">{__($reply['thread']['forum']['forum_name'])}</a>
+                </div>
+                <i class="far fa-clock mr5"></i><span class="js_moment" data-time="{$reply['time']}">{$reply['time']}</span>
+              </div>
+              <div class="content">
+                <div class="mb10">
+                  <div class="mb5">
+                    <strong class="title"><a href="{$system['system_url']}/forums/thread/{$reply['thread']['thread_id']}/{$reply['thread']['title_url']}">{$reply['thread']['title']}</a></strong>
+                    <div class="float-end text-end">
+                      {__("Replies")}: <strong>{$reply['thread']['replies']}</strong><br>
+                      {__("Views")}: <strong>{$reply['thread']['views']}</strong>
+                    </div>
+                  </div>
+                  <div class="mb5">
+                    {__("By")}: <a href="{$system['system_url']}/{$reply['thread']['user_name']}">{$reply['thread']['user_fullname']}</a> <span class="js_moment" data-time="{$reply['thread']['time']}">{$reply['thread']['time']}</span>
+                  </div>
+                </div>
+                <div class="snippet">
+                  {$reply['text_snippet']|truncate:300}
+                </div>
+              </div>
+            </div>
+          {/foreach}
+          <div class="mt20">
+            {$pager}
+          </div>
+        {else}
+          {include file='_no_data.tpl'}
+        {/if}
+        <!-- replies -->
+
+      {elseif $view == "search"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          <li class="breadcrumb-item active">{__("Search")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- search -->
+        <div class="card mt20">
+          <div class="card-header with-icon">
+            {include file='__svg_icons.tpl' icon="search" class="main-icon mr10" width="24px" height="24px"}
+            {__("Search")}
+          </div>
+          <form action="{$system['system_url']}/forums/search-results" method="get">
+            <div class="card-body">
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Keyword(s)")}
+                </label>
+                <div class="col-md-10">
+                  <input class="form-control" name="query" required autofocus>
+                </div>
+              </div>
+
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Search For")}
+                </label>
+                <div class="col-md-10">
+                  <select class="form-select" name="type">
+                    <option value="threads">{__("Threads")}</option>
+                    <option value="replies">{__("Replies")}</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="row form-group">
+                <label class="col-md-2 form-label">
+                  {__("Search in Forum(s)")}
+                </label>
+                <div class="col-md-10">
+                  <select class="form-select" name="forum">
+                    <option value="all">{__("Search All Forums")}</option>
+                    {foreach $forums as $forum}
+                      {include file='admin.forums.recursive_options.tpl'}
+                    {/foreach}
+                  </select>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="offset-md-2 col-md-10">
+                  <div class="checkbox checkbox-primary">
+                    <input type="checkbox" name="recursive" id="recursive">
+                    <label for="recursive">{__("Also search in child forums")}</label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- error -->
+              <div class="alert alert-danger mt15 mb0 x-hidden"></div>
+              <!-- error -->
+            </div>
+            <div class="card-footer text-end">
+              <button type="submit" class="btn btn-primary">{__("Search")}</button>
+            </div>
+          </form>
+        </div>
+        <!-- search -->
+
+      {elseif $view == "search-results"}
+
+        <!-- breadcrumb -->
+        <ol class="breadcrumb forum-breadcrumb">
+          <li class="breadcrumb-item"><a href="{$system['system_url']}/forums/"><i class="fa fa-home"></i> {__("Home")}</a></li>
+          <li class="breadcrumb-item active">{__("Search Results")}</li>
+        </ol>
+        <!-- breadcrumb -->
+
+        <!-- search title -->
+        <div class="forum-meta-head mt20">
+          <div class="float-end">
+            {__("Results Found")}<span class="badge badge-lg bg-secondary ml5">{if $total}{$total}{else}0{/if}</span>
+          </div>
+          {__("Keyword(s)")}: <u>{htmlentities($query, ENT_QUOTES, 'utf-8')}</u>
+        </div>
+        <!-- search title -->
+
+        <!-- search results -->
+        {if $type == "threads"}
+          <!-- threads -->
+          {if $results}
+            {foreach $results as $thread}
+              <div class="forum-result">
+                <div class="head">
+                  <div class="float-end">
+                    {__("Forum")}: <a href="{$system['system_url']}/forums/{$thread['forum']['forum_id']}/{$thread['forum']['title_url']}">{__($thread['forum']['forum_name'])}</a>
+                  </div>
+                  <i class="far fa-clock mr5"></i><span class="js_moment" data-time="{$thread['time']}">{$thread['time']}</span>
+                </div>
+                <div class="content">
+                  <div class="mb10">
+                    <div class="mb5">
+                      <strong class="title"><a href="{$system['system_url']}/forums/thread/{$thread['thread_id']}/{$thread['title_url']}">{$thread['title']}</a></strong>
+                      <div class="float-end text-end">
+                        {__("Replies")}: <strong>{$thread['replies']}</strong><br>
+                        {__("Views")}: <strong>{$thread['views']}</strong>
+                      </div>
+                    </div>
+                    <div class="mb5">
+                      {__("By")}: <a href="{$system['system_url']}/{$thread['user_name']}">{$thread['user_fullname']}</a> <span class="js_moment" data-time="{$thread['time']}">{$thread['time']}</span>
+                    </div>
+                  </div>
+                  <div class="snippet">
+                    {$thread['text_snippet']|truncate:300}
+                  </div>
+                </div>
+              </div>
+            {/foreach}
+            <div class="mt20">
+              {$pager}
+            </div>
+          {else}
+            {include file='_no_data.tpl'}
+          {/if}
+          <!-- threads -->
+        {elseif $type == "replies"}
+          <!-- replies -->
+          {if $results}
+            {foreach $results as $reply}
+              <div class="forum-result">
+                <div class="head">
+                  <div class="float-end">
+                    {__("Forum")}: <a href="{$system['system_url']}/forums/{$reply['thread']['forum']['forum_id']}/{$reply['thread']['forum']['title_url']}">{__($reply['thread']['forum']['forum_name'])}</a>
+                  </div>
+                  <i class="far fa-clock mr5"></i><span class="js_moment" data-time="{$reply['time']}">{$reply['time']}</span>
+                </div>
+                <div class="content">
+                  <div class="mb10">
+                    <div class="mb5">
+                      <strong class="title"><a href="{$system['system_url']}/forums/thread/{$reply['thread']['thread_id']}/{$reply['thread']['title_url']}">{$reply['thread']['title']}</a></strong>
+                      <div class="float-end">
+                        {__("Replies")}: <strong>{$reply['thread']['replies']}</strong><br>
+                        {__("Views")}: <strong>{$reply['thread']['views']}</strong>
+                      </div>
+                    </div>
+                    <div class="mb5">
+                      {__("By")}: <a href="{$system['system_url']}/{$reply['thread']['user_name']}">{$reply['thread']['user_fullname']}</a> <span class="js_moment" data-time="{$reply['thread']['time']}">{$reply['thread']['time']}</span>
+                    </div>
+                  </div>
+                  <div class="snippet">
+                    {$reply['text_snippet']|truncate:300}
+                  </div>
+                </div>
+              </div>
+            {/foreach}
+            <div class="mt20">
+              {$pager}
+            </div>
+          {else}
+            {include file='_no_data.tpl'}
+          {/if}
+          <!-- replies -->
+        {/if}
+        <!-- search results -->
+
+      {/if}
     </div>
+    <!-- content panel -->
 
-  {/if}
-
+  </div>
 </div>
-<!-- /FORUMS MODERN UI -->
+<!-- page content -->
 
 {include file='_footer.tpl'}
