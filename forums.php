@@ -49,37 +49,11 @@ try {
         $get_replies = $db->query("SELECT COUNT(*) as count FROM forums_replies");
         $insights['replies'] = $get_replies->fetch_assoc()['count'];
         /* total users */
-        $get_users = $db->query("SELECT COUNT(*) as count FROM users WHERE user_group >= 3 AND user_banned = '0'");
+        $get_users = $db->query("SELECT COUNT(*) as count FROM users");
         $insights['users'] = $get_users->fetch_assoc()['count'];
         /* assign variables */
         $smarty->assign('insights', $insights);
       }
-      /* top contributors */
-      $top_contributors = $db->query(
-        "SELECT u.user_id, u.user_name, u.user_firstname, u.user_lastname, u.user_gender, u.user_picture, u.user_verified,
-                COUNT(DISTINCT ft.thread_id) AS thread_count,
-                COUNT(DISTINCT fr.reply_id)  AS reply_count
-         FROM users u
-         LEFT JOIN forums_threads ft ON ft.user_id = u.user_id
-         LEFT JOIN forums_replies  fr ON fr.user_id = u.user_id
-         WHERE u.user_banned = '0' AND u.user_group >= 3
-         GROUP BY u.user_id
-         HAVING (thread_count + reply_count) > 0
-         ORDER BY (thread_count + reply_count) DESC
-         LIMIT 5"
-      );
-      $contributors = [];
-      if ($top_contributors && $top_contributors->num_rows > 0) {
-        while ($c = $top_contributors->fetch_assoc()) {
-          $c['user_picture']  = get_picture($c['user_picture'], $c['user_gender']);
-          $c['user_fullname'] = ($system['show_usernames_enabled']) ? $c['user_name'] : $c['user_firstname'] . " " . $c['user_lastname'];
-          $contributors[] = $c;
-        }
-      }
-      $smarty->assign('top_contributors', $contributors);
-      /* popular tags */
-      $popular_tags = $user->get_all_tags(15);
-      $smarty->assign('popular_tags', $popular_tags);
       break;
 
     case 'forum':
@@ -88,11 +62,10 @@ try {
       if (!$forum) {
         _error(404);
       }
-      /* sort */
-      $sort = isset($_GET['sort']) && in_array($_GET['sort'], ['newest','top','hot','rising','q&a','unanswered']) ? $_GET['sort'] : 'newest';
-      $smarty->assign('sort', $sort);
       /* get threads */
-      $forum['threads'] = $user->get_forum_threads(['forum' => $forum, 'sort' => $sort]);
+      if ($forum['forum_threads'] > 0) {
+        $forum['threads'] = $user->get_forum_threads(['forum' => $forum]);
+      }
       /* assign variables */
       $smarty->assign('forum', $forum);
 
