@@ -23,4 +23,16 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch origin main
             git reset --hard origin/main
+
+            # Run pending SQL migrations if they exist
+            if [ -f "includes/sql/forums_phase1.sql" ]; then
+              echo "Running forum migration..."
+              mysql -u alphaome_nkhojfm -p${{ secrets.DB_PASSWORD }} alphaome_nkhojfm < includes/sql/forums_phase1.sql
+              if [ $? -eq 0 ]; then
+                echo "✅ Forum migration completed"
+              else
+                echo "⚠️ Forum migration warning (tables may already exist)"
+              fi
+            fi
+
             echo "✅ Deployed at $(date)"
