@@ -300,6 +300,8 @@ try {
   $inputs['location'] = $_POST['location'];
   $inputs['colored_pattern'] = $_POST['colored_pattern'];
   $inputs['poll_options'] = $options;
+  $inputs['question_title'] = $_POST['question_title'] ?? null;
+  $inputs['question_category'] = (isset($_POST['question_category']) && is_numeric($_POST['question_category'])) ? (int)$_POST['question_category'] : 1;
   $inputs['reel'] = $_POST['reel'];
   $inputs['reel_thumbnail'] = $_POST['reel_thumbnail'];
   $inputs['video'] = $_POST['video'];

@@ -781,6 +781,39 @@ trait PostsTrait
         $post['og_title'] = $post['course']['title'];
         $post['og_image'] = $system['system_uploads'] . '/' . $post['course']['cover_image'];
       }
+      /* check if post is a question post */
+      if ($post['post_type'] == 'question') {
+        $get_q = $db->query(sprintf("SELECT * FROM posts_questions WHERE post_id = %s", secure($post['post_id'], 'int')));
+        if ($get_q && $get_q->num_rows > 0) {
+          $post['question'] = $get_q->fetch_assoc();
+          $get_stats = $db->query(sprintf(
+            "SELECT vote_type, COUNT(*) as count FROM posts_questions_votes WHERE post_id = %s GROUP BY vote_type",
+            secure($post['post_id'], 'int')
+          ));
+          $stats = ['good' => 0, 'satisfactory' => 0, 'bad' => 0, 'total' => 0];
+          if ($get_stats) {
+            while ($row = $get_stats->fetch_assoc()) {
+              $stats[$row['vote_type']] = (int)$row['count'];
+              $stats['total'] += (int)$row['count'];
+            }
+          }
+          $post['question']['good_pct'] = $stats['total'] > 0 ? round($stats['good'] / $stats['total'] * 100) : 0;
+          $post['question']['sat_pct']  = $stats['total'] > 0 ? round($stats['satisfactory'] / $stats['total'] * 100) : 0;
+          $post['question']['bad_pct']  = $stats['total'] > 0 ? round($stats['bad'] / $stats['total'] * 100) : 0;
+          $post['question']['total_votes'] = $stats['total'];
+          /* viewer's own vote */
+          $post['question']['my_vote'] = null;
+          if ($this->_logged_in) {
+            $my = $db->query(sprintf(
+              "SELECT vote_type FROM posts_questions_votes WHERE post_id = %s AND user_id = %s",
+              secure($post['post_id'], 'int'), secure($this->_data['user_id'], 'int')
+            ));
+            if ($my && $my->num_rows > 0) {
+              $post['question']['my_vote'] = $my->fetch_assoc()['vote_type'];
+            }
+          }
+        }
+      }
       /* check if post is a poll post */
       if ($post['post_type'] == 'poll') {
         /* get poll */

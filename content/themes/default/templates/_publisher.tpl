@@ -182,6 +182,13 @@
           </div>
           <!-- post gif -->
 
+          <!-- post question -->
+          <div class="publisher-meta" data-meta="question">
+            <i class="fa fa-question-circle fa-fw mr5" style="color:#5e72e4;"></i>
+            <input type="text" name="question_title" placeholder='{__("What do you want to ask the community?")}' maxlength="500" style="flex:1;">
+          </div>
+          <!-- /post question -->
+
           <!-- post poll -->
           <div class="publisher-meta" data-meta="poll">
             {include file='__svg_icons.tpl' icon="plus" class="main-icon" width="16px" height="16px"}
@@ -425,6 +432,12 @@
                   </div>
                 </li>
               {/if}
+              <li class="col-md-6">
+                <div class="publisher-tools-tab js_publisher-tab" data-tab="question">
+                  <i class="fa fa-question-circle main-icon mr5" style="font-size:20px;color:#5e72e4;"></i>
+                  {__("Ask Me")}
+                </div>
+              </li>
               {if $user->_data['can_add_reels']}
                 <li class="col-md-6">
                   <div class="publisher-tools-tab attach js_publisher-tab" data-tab="reel">

@@ -276,6 +276,8 @@ trait PublisherTrait
       $post['post_type'] = 'course';
     } elseif ($args['poll_options']) {
       $post['post_type'] = 'poll';
+    } elseif (!is_empty($args['question_title'])) {
+      $post['post_type'] = 'question';
     } elseif ($args['reel']) {
       $post['post_type'] = 'reel';
       /* check if ffmpeg enabled */
@@ -608,6 +610,25 @@ trait PublisherTrait
       $db->query(sprintf("INSERT INTO posts_courses (post_id, category_id, title, location, fees, fees_currency, start_date, end_date, cover_image) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", secure($post['post_id'], 'int'), secure($args['course']->category, 'int'), secure($args['course']->title), secure($args['course']->location), secure($args['course']->fees), secure($args['course']->fees_currency, 'int'), secure($args['course']->start_date, 'datetime'), secure($args['course']->end_date, 'datetime'), secure($args['course']->cover_image)));
       /* remove pending uploads */
       remove_pending_uploads([$args['course']->cover_image]);
+    }
+    /* insert the post [question] */
+    if ($post['post_type'] == 'question') {
+      $category_id = (int)($args['question_category'] ?? 1);
+      $db->query(sprintf(
+        "INSERT INTO posts_questions (post_id, question_title, category_id) VALUES (%s, %s, %s)",
+        secure($post['post_id'], 'int'),
+        secure($args['question_title']),
+        secure($category_id, 'int')
+      ));
+      $post['question'] = [
+        'post_id'       => $post['post_id'],
+        'question_title'=> htmlspecialchars($args['question_title'], ENT_QUOTES),
+        'category_id'   => $category_id,
+        'good_pct'      => 0,
+        'sat_pct'       => 0,
+        'bad_pct'       => 0,
+        'total_votes'   => 0,
+      ];
     }
     /* insert the post [poll] */
     if ($post['post_type'] == 'poll') {

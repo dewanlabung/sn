@@ -60,6 +60,28 @@ $migrations = [
   "ALTER TABLE `forums_replies` ADD COLUMN IF NOT EXISTS `reply_votes_up`    INT(11) NOT NULL DEFAULT 0",
   "ALTER TABLE `forums_replies` ADD COLUMN IF NOT EXISTS `reply_votes_down`  INT(11) NOT NULL DEFAULT 0",
   "ALTER TABLE `forums_threads` ADD COLUMN IF NOT EXISTS `thread_best_reply_id` INT(11) DEFAULT NULL",
+  "CREATE TABLE IF NOT EXISTS `questions_categories` (
+    `category_id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `category_name` VARCHAR(255) NOT NULL,
+    `category_order` INT(10) UNSIGNED NOT NULL DEFAULT 1,
+    PRIMARY KEY (`category_id`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+  "INSERT IGNORE INTO `questions_categories` (`category_id`, `category_name`, `category_order`) VALUES (1, 'General Questions', 1)",
+  "CREATE TABLE IF NOT EXISTS `posts_questions` (
+    `post_id`        INT(10) UNSIGNED NOT NULL,
+    `question_title` TEXT NOT NULL,
+    `category_id`    INT(10) UNSIGNED NOT NULL DEFAULT 1,
+    PRIMARY KEY (`post_id`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+  "CREATE TABLE IF NOT EXISTS `posts_questions_votes` (
+    `vote_id`    INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `post_id`    INT(10) UNSIGNED NOT NULL,
+    `user_id`    INT(10) UNSIGNED NOT NULL,
+    `vote_type`  ENUM('satisfactory','good','bad') NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`vote_id`),
+    UNIQUE KEY `unique_vote` (`post_id`,`user_id`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
 ];
 
 if ($do === 'migrate' || $do === 'all') {
@@ -86,7 +108,7 @@ if ($do === 'migrate' || $do === 'all') {
   echo empty($errs) ? " — all good\n" : " — " . count($errs) . " failed\n";
 
   echo "\n--- Verify ---\n";
-  foreach (['forums_moderation_log', 'forums_subscriptions', 'forums_votes'] as $t) {
+  foreach (['forums_moderation_log', 'forums_subscriptions', 'forums_votes', 'questions_categories', 'posts_questions', 'posts_questions_votes'] as $t) {
     $r = $db->query("SHOW TABLES LIKE '$t'");
     echo ($r && $r->num_rows > 0 ? "EXISTS " : "MISSING") . ": $t\n";
   }

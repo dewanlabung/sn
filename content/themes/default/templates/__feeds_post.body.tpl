@@ -1213,6 +1213,85 @@
       </div>
     {/if}
 
+    {if $_post['post_type'] == "question" && $_post['question']}
+      <div class="question-card mt10" id="q_{$_post['post_id']}">
+        <div class="question-title-bar">
+          <span class="badge bg-primary mr10">{__("Ask Me")}</span>
+          <span class="question-title-text">{$_post['question']['question_title']|escape}</span>
+        </div>
+        <div class="question-vote-row mt10">
+          <button class="btn btn-sm js_q-vote {if $_post['question']['my_vote'] == 'good'}btn-success{else}btn-outline-success{/if}"
+                  data-id="{$_post['post_id']}" data-type="good"
+                  {if !$user->_logged_in}onclick="window.location.href='{$system['system_url']}/login'" {/if}>
+            👍 {__("Good")}
+          </button>
+          <button class="btn btn-sm js_q-vote ml5 {if $_post['question']['my_vote'] == 'satisfactory'}btn-primary{else}btn-outline-primary{/if}"
+                  data-id="{$_post['post_id']}" data-type="satisfactory"
+                  {if !$user->_logged_in}onclick="window.location.href='{$system['system_url']}/login'" {/if}>
+            🤔 {__("Satisfactory")}
+          </button>
+          <button class="btn btn-sm js_q-vote ml5 {if $_post['question']['my_vote'] == 'bad'}btn-danger{else}btn-outline-danger{/if}"
+                  data-id="{$_post['post_id']}" data-type="bad"
+                  {if !$user->_logged_in}onclick="window.location.href='{$system['system_url']}/login'" {/if}>
+            👎 {__("Bad")}
+          </button>
+        </div>
+        <div class="question-bar-wrap mt10">
+          <div class="progress question-progress-bar">
+            <div class="progress-bar bg-success" style="width:{$_post['question']['good_pct']}%" title="{__('Good')}: {$_post['question']['good_pct']}%"></div>
+            <div class="progress-bar bg-primary" style="width:{$_post['question']['sat_pct']}%" title="{__('Satisfactory')}: {$_post['question']['sat_pct']}%"></div>
+            <div class="progress-bar bg-danger"  style="width:{$_post['question']['bad_pct']}%"  title="{__('Bad')}: {$_post['question']['bad_pct']}%"></div>
+          </div>
+          <small class="text-muted">{$_post['question']['total_votes']} {__("votes")}</small>
+        </div>
+      </div>
+      <script>
+      var _qPid  = {$_post['post_id']};
+      var _qUrl  = '{$system['system_url']}/includes/ajax/posts/question_vote.php';
+      {literal}
+      (function() {
+        var postId  = _qPid;
+        var voteUrl = _qUrl;
+        var card    = document.getElementById('q_' + postId);
+        if (!card) return;
+        card.querySelectorAll('.js_q-vote').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            var voteType = this.dataset.type;
+            fetch(voteUrl, {
+              method: 'POST',
+              headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+              body: 'post_id=' + postId + '&vote_type=' + voteType
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(data) {
+              if (data.error) return;
+              var typeMap = {'good':'btn-success','satisfactory':'btn-primary','bad':'btn-danger'};
+              card.querySelectorAll('.js_q-vote').forEach(function(b) {
+                var t = b.dataset.type;
+                b.classList.remove('btn-success','btn-primary','btn-danger');
+                b.classList.add('btn-outline-' + (t==='good'?'success':t==='satisfactory'?'primary':'danger'));
+              });
+              if (data.my_vote) {
+                var active = card.querySelector('.js_q-vote[data-type="' + data.my_vote + '"]');
+                if (active) {
+                  active.classList.remove('btn-outline-success','btn-outline-primary','btn-outline-danger');
+                  active.classList.add(typeMap[data.my_vote]);
+                }
+              }
+              var bars = card.querySelectorAll('.question-progress-bar .progress-bar');
+              if (bars[0]) bars[0].style.width = data.good_pct + '%';
+              if (bars[1]) bars[1].style.width = data.sat_pct  + '%';
+              if (bars[2]) bars[2].style.width = data.bad_pct  + '%';
+              var lbl = card.querySelector('.question-bar-wrap small');
+              if (lbl) lbl.textContent = data.total + ' votes';
+            });
+          });
+        });
+      })();
+      {/literal}
+      </script>
+    {/if}
+
     {if $_post['post_type'] == "reel" && $_post['reel']}
       <div class="{if $_post['post_type'] == "combo"}mt10{/if}">
         <video class="js_video-plyr" id="reel-{$_post['reel']['reel_id']}{if $pinned || $boosted}-{$_post['post_id']}{/if}" {if $user->_logged_in}onplay="update_media_views('reel', {$_post['reel']['reel_id']})" {/if} {if $_post['reel']['thumbnail']}data-poster="{$system['system_uploads']}/{$_post['reel']['thumbnail']}" {/if} playsinline controls preload="auto" style="max-width: 100%; width: 100%; height: auto;">
