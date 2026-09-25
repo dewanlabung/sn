@@ -1047,9 +1047,9 @@
                           {__("Factory Reset")}
                         </a>
                       </li>
-                      <li {if $view == "tools" && $sub_view == "forum-migration"}class="active" {/if}>
-                        <a href="{$system['system_url']}/{$control_panel['url']}/tools/forum-migration">
-                          {__("Forum Migration")}
+                      <li {if $view == "tools" && $sub_view == "deploy"}class="active" {/if}>
+                        <a href="{$system['system_url']}/{$control_panel['url']}/tools/deploy">
+                          <i class="fa fa-rocket mr5" style="color:#FF9800"></i>{__("Deploy & Upgrade")}
                         </a>
                       </li>
                     </ul>
