@@ -9403,7 +9403,7 @@ body.night-mode .forum-result .snippet {
 
 @media (max-width: 900px) {
   .fm-layout { flex-direction: column; }
-  .fm-sidebar { width: 100%; }
+  .fm-sidebar { display: none; }
 }
 
 /* Hero banner */

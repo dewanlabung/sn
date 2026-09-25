@@ -2,7 +2,15 @@
 {include file='_header.tpl'}
 
 <!-- FORUMS MODERN UI -->
-<div class="{if $system['fluid_design']}container-fluid{else}container{/if} forum-modern-wrap">
+<div class="{if $system['fluid_design']}container-fluid{else}container{/if} sg-offcanvas forum-modern-wrap">
+
+  <!-- mobile sidebar (hamburger menu) -->
+  <div class="col-12 d-block d-md-none sg-offcanvas-sidebar mt20">
+    {include file='_sidebar.tpl'}
+  </div>
+  <!-- /mobile sidebar -->
+
+  <div class="sg-offcanvas-mainbar">
 
   {* ================================================================ *}
   {* VIEW: HOME                                                        *}
@@ -754,6 +762,8 @@
     </div>
 
   {/if}
+
+  </div>{* /sg-offcanvas-mainbar *}
 
 </div>
 <!-- /FORUMS MODERN UI -->
