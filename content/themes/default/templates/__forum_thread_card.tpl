@@ -41,26 +41,31 @@
 </div>
 
 <script>
+var _voteUrl      = '{$system['system_url']}/includes/ajax/forums/vote.php';
+var _loginUrl     = '{$system['system_url']}/login';
+var _userLoggedIn = {if $user->_logged_in}true{else}false{/if};
+{literal}
 function forumVote(btn, voteType, itemType, itemId) {
-  {if !$user->_logged_in}
-    window.location.href = '{$system['system_url']}/login';
+  if (!_userLoggedIn) {
+    window.location.href = _loginUrl;
     return;
-  {/if}
+  }
   var scoreEl = document.getElementById('score-' + itemType + '-' + itemId);
   var col = btn.closest('.fm-vote-strip') || btn.closest('.fm-vote-col');
-  fetch('{$system['system_url']}/includes/ajax/forums/vote.php', {
+  fetch(_voteUrl, {
     method: 'POST',
     headers: {'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
     body: 'item_id=' + itemId + '&item_type=' + itemType + '&vote_type=' + voteType
   })
-  .then(r => r.json())
-  .then(data => {
+  .then(function(r){ return r.json(); })
+  .then(function(data) {
     if (data.error) return;
     if (scoreEl) scoreEl.textContent = data.score;
     if (col) {
-      col.querySelectorAll('.fm-vote-btn').forEach(b => b.classList.remove('active'));
+      col.querySelectorAll('.fm-vote-btn').forEach(function(b){ b.classList.remove('active'); });
       if (data.my_vote) col.querySelector('.fm-vote-' + data.my_vote).classList.add('active');
     }
   });
 }
+{/literal}
 </script>
