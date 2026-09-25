@@ -910,6 +910,95 @@
     </div>
     <!-- Factory Reset -->
 
+  {elseif $sub_view == "deploy"}
+
+    <!-- card-header -->
+    <div class="card-header with-icon">
+      <i class="fa fa-rocket mr10"></i>{__("Tools")} &rsaquo; {__("Deploy & Upgrade")}
+    </div>
+    <!-- card-header -->
+
+    <!-- Deploy Tool -->
+    <div class="card-body">
+
+      <div class="alert alert-info">
+        <div class="icon">
+          <i class="fa fa-info-circle fa-2x"></i>
+        </div>
+        <div class="text pt5">
+          {__("Run pending database migrations and clear all caches after deploying new features.")}
+        </div>
+      </div>
+
+      <!-- Migration Section -->
+      <div class="form-table-row mb20">
+        <div class="avatar">
+          <i class="fa fa-database fa-2x" style="color:#03A9F4"></i>
+        </div>
+        <div>
+          <div class="form-label h6">{__("Database Migrations")}</div>
+          <div class="form-text">{__("Apply any pending schema changes (tables, columns). Safe to run multiple times.")}</div>
+        </div>
+        <div class="text-end">
+          <button class="btn btn-primary js_deploy-migrate" type="button">
+            <i class="fa fa-play mr5"></i>{__("Run Migrations")}
+          </button>
+        </div>
+      </div>
+
+      <!-- Cache Section -->
+      <div class="form-table-row mb20">
+        <div class="avatar">
+          <i class="fa fa-broom fa-2x" style="color:#4CAF50"></i>
+        </div>
+        <div>
+          <div class="form-label h6">{__("Clear Cache")}</div>
+          <div class="form-text">{__("Clear compiled templates and Smarty cache.")}</div>
+        </div>
+        <div class="text-end">
+          <button class="btn btn-success js_deploy-cache" type="button">
+            <i class="fa fa-broom mr5"></i>{__("Clear Cache")}
+          </button>
+        </div>
+      </div>
+
+      <!-- Run All Section -->
+      <div class="text-center mt20">
+        <button class="btn btn-warning js_deploy-all" type="button">
+          <i class="fa fa-rocket mr10"></i>{__("Run Migrations + Clear Cache")}
+        </button>
+      </div>
+
+      <!-- Output -->
+      <div id="deploy-output" class="mt20" style="display:none;">
+        <div class="form-label h6">{__("Output")}</div>
+        <pre id="deploy-output-text" style="background:#1a1a1a;color:#0f0;padding:15px;border-radius:6px;max-height:400px;overflow-y:auto;font-size:13px;white-space:pre-wrap;"></pre>
+      </div>
+
+    </div>
+    <!-- Deploy Tool -->
+
+    <script>
+    (function() {
+      function runDeploy(action) {
+        var out = document.getElementById('deploy-output');
+        var pre = document.getElementById('deploy-output-text');
+        out.style.display = 'block';
+        pre.textContent = 'Running ' + action + '...\n';
+        fetch('{$system['system_url']}/includes/ajax/admin/deploy.php?do=' + action, {
+          method: 'POST',
+          headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(function(r){ return r.text(); })
+        .then(function(t){ pre.textContent = t; })
+        .catch(function(e){ pre.textContent = 'Error: ' + e; });
+      }
+      document.querySelector('.js_deploy-migrate') && document.querySelector('.js_deploy-migrate').addEventListener('click', function(){ runDeploy('migrate'); });
+      document.querySelector('.js_deploy-cache')  && document.querySelector('.js_deploy-cache').addEventListener('click',  function(){ runDeploy('cache'); });
+      document.querySelector('.js_deploy-all')    && document.querySelector('.js_deploy-all').addEventListener('click',    function(){ runDeploy('all'); });
+    })();
+    </script>
+
   {/if}
 
 </div>

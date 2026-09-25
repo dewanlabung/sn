@@ -23,4 +23,22 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }}
             git fetch origin main
             git reset --hard origin/main
+
+            # Run pending SQL migrations if they exist
+            if [ -f "includes/sql/forums_phase1.sql" ]; then
+              echo "Running forum migration..."
+              export MYSQL_PWD="${{ secrets.DB_PASSWORD }}"
+              mysql -u alphaome_nkhojfm alphaome_nkhojfm < includes/sql/forums_phase1.sql 2>&1
+              RESULT=$?
+              if [ $RESULT -eq 0 ]; then
+                echo "✅ Forum migration completed successfully"
+                mysql -u alphaome_nkhojfm alphaome_nkhojfm -e "SHOW TABLES LIKE 'forums_%';" 2>&1
+              else
+                echo "⚠️ Migration returned code $RESULT"
+              fi
+              unset MYSQL_PWD
+            else
+              echo "⚠️ Migration file not found"
+            fi
+
             echo "✅ Deployed at $(date)"

@@ -3464,6 +3464,11 @@ try {
           page_header($control_panel['title'] . " &rsaquo; " . __("Tools") . " &rsaquo; " . __("Factory Reset"));
           break;
 
+        case 'deploy':
+          // page header
+          page_header($control_panel['title'] . " &rsaquo; " . __("Tools") . " &rsaquo; " . __("Deploy & Upgrade"));
+          break;
+
         default:
           _error(404);
           break;
