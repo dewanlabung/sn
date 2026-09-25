@@ -2327,6 +2327,71 @@ try {
           $smarty->assign('pager', $pager->getPager());
           break;
 
+        case 'migrate':
+          // Run forum schema migrations inline, output as plain text
+          header('Content-Type: text/plain; charset=utf-8');
+          $migrations = [
+            "ALTER TABLE `forums_threads` ADD COLUMN IF NOT EXISTS `thread_pinned` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `forums_threads` ADD COLUMN IF NOT EXISTS `thread_locked` TINYINT(1) NOT NULL DEFAULT 0",
+            "ALTER TABLE `forums_replies` ADD COLUMN IF NOT EXISTS `reply_is_answer` TINYINT(1) NOT NULL DEFAULT 0",
+            "CREATE TABLE IF NOT EXISTS `forums_moderation_log` (
+              `log_id` INT(11) NOT NULL AUTO_INCREMENT,
+              `moderator_id` INT(11) NOT NULL,
+              `action_type` VARCHAR(50) NOT NULL,
+              `target_type` VARCHAR(20) NOT NULL,
+              `target_id` INT(11) NOT NULL,
+              `reason` TEXT,
+              `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`log_id`),
+              KEY `idx_mod_log_moderator` (`moderator_id`),
+              KEY `idx_mod_log_target` (`target_type`, `target_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE IF NOT EXISTS `forums_subscriptions` (
+              `subscription_id` INT(11) NOT NULL AUTO_INCREMENT,
+              `user_id` INT(11) NOT NULL,
+              `forum_id` INT(11),
+              `thread_id` INT(11),
+              `subscription_type` ENUM('forum','thread') NOT NULL,
+              `notify_email` TINYINT(1) NOT NULL DEFAULT 1,
+              `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              PRIMARY KEY (`subscription_id`),
+              UNIQUE KEY `uq_sub_forum` (`user_id`, `forum_id`, `subscription_type`),
+              UNIQUE KEY `uq_sub_thread` (`user_id`, `thread_id`, `subscription_type`),
+              KEY `idx_sub_user` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+          ];
+          echo "Forum Migration\n" . str_repeat("=", 40) . "\n\n";
+          $ok = 0; $errs = [];
+          foreach ($migrations as $sql) {
+            $short = substr(trim(preg_replace('/\s+/', ' ', $sql)), 0, 60);
+            if ($db->query($sql) !== false) {
+              echo "OK: $short\n"; $ok++;
+            } else {
+              $e = $db->error;
+              if (stripos($e, 'duplicate') !== false || stripos($e, 'already') !== false) {
+                echo "SKIP (exists): $short\n"; $ok++;
+              } else {
+                echo "ERROR: $short\n  -> $e\n"; $errs[] = $e;
+              }
+            }
+          }
+          echo "\n" . str_repeat("=", 40) . "\n";
+          echo "Done: $ok/" . count($migrations) . " statements\n";
+          if (!empty($errs)) { echo "\nFailed:\n"; foreach ($errs as $e) echo "  - $e\n"; }
+          echo "\nVerify tables:\n";
+          foreach (['forums_moderation_log','forums_subscriptions'] as $t) {
+            $r = $db->query("SHOW TABLES LIKE '$t'");
+            echo ($r && $r->num_rows > 0 ? "EXISTS" : "MISSING") . ": $t\n";
+          }
+          echo "\nVerify columns on forums_threads:\n";
+          $r = $db->query("SHOW COLUMNS FROM forums_threads LIKE 'thread_pinned'");
+          echo ($r && $r->num_rows > 0 ? "EXISTS" : "MISSING") . ": thread_pinned\n";
+          $r = $db->query("SHOW COLUMNS FROM forums_threads LIKE 'thread_locked'");
+          echo ($r && $r->num_rows > 0 ? "EXISTS" : "MISSING") . ": thread_locked\n";
+          $r = $db->query("SHOW COLUMNS FROM forums_replies LIKE 'reply_is_answer'");
+          echo ($r && $r->num_rows > 0 ? "EXISTS" : "MISSING") . ": reply_is_answer (forums_replies)\n";
+          exit;
+
         default:
           _error(404);
           break;
