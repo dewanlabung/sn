@@ -294,6 +294,12 @@
         </li>
       {/if}
 
+      <li {if $page == "korea-visa"}class="active" {/if}>
+        <a href="{$system['system_url']}/korea-visa">
+          <i class="fa fa-passport main-icon mr10" style="color:#2b53a4;font-size:20px;"></i>{__("Visa Center")}
+        </a>
+      </li>
+
       {if $system['movies_enabled']}
         <li {if $page == "movies"}class="active" {/if}>
           <a href="{$system['system_url']}/movies">
