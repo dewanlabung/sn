@@ -1047,6 +1047,11 @@
                           {__("Factory Reset")}
                         </a>
                       </li>
+                      <li {if $view == "tools" && $sub_view == "forum-migration"}class="active" {/if}>
+                        <a href="{$system['system_url']}/{$control_panel['url']}/tools/forum-migration">
+                          {__("Forum Migration")}
+                        </a>
+                      </li>
                     </ul>
                   </div>
                 </li>
