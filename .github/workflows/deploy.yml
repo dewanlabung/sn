@@ -25,6 +25,10 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            # Clear Smarty compiled templates so new templates take effect immediately
+            rm -rf content/themes/default/templates_compiled/*
+            echo "✅ Smarty cache cleared"
+
             # Run pending SQL migrations if they exist
             if [ -f "includes/sql/forums_phase1.sql" ]; then
               echo "Running forum migration..."
