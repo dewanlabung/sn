@@ -64,8 +64,8 @@ try {
          LEFT JOIN forums_replies  fr ON fr.user_id = u.user_id
          WHERE u.user_banned = '0' AND u.user_group >= 3
          GROUP BY u.user_id
-         HAVING (thread_count + reply_count) > 0
-         ORDER BY (thread_count + reply_count) DESC
+         HAVING (COUNT(DISTINCT ft.thread_id) + COUNT(DISTINCT fr.reply_id)) > 0
+         ORDER BY (COUNT(DISTINCT ft.thread_id) + COUNT(DISTINCT fr.reply_id)) DESC
          LIMIT 5"
       );
       $contributors = [];
