@@ -979,13 +979,15 @@
     <!-- Deploy Tool -->
 
     <script>
+    var _deployUrl = '{$system['system_url']}/includes/ajax/admin/deploy.php';
+    {literal}
     (function() {
       function runDeploy(action) {
         var out = document.getElementById('deploy-output');
         var pre = document.getElementById('deploy-output-text');
         out.style.display = 'block';
         pre.textContent = 'Running ' + action + '...\n';
-        fetch('{$system['system_url']}/includes/ajax/admin/deploy.php?do=' + action, {
+        fetch(_deployUrl + '?do=' + action, {
           method: 'POST',
           headers: {'X-Requested-With': 'XMLHttpRequest'}
         })
@@ -997,6 +999,7 @@
       document.querySelector('.js_deploy-cache')  && document.querySelector('.js_deploy-cache').addEventListener('click',  function(){ runDeploy('cache'); });
       document.querySelector('.js_deploy-all')    && document.querySelector('.js_deploy-all').addEventListener('click',    function(){ runDeploy('all'); });
     })();
+    {/literal}
     </script>
 
   {/if}

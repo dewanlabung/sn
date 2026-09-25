@@ -44,6 +44,22 @@ $migrations = [
     UNIQUE KEY `uq_sub_thread` (`user_id`, `thread_id`, `subscription_type`),
     KEY `idx_sub_user` (`user_id`)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+  "CREATE TABLE IF NOT EXISTS `forums_votes` (
+    `vote_id`   INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+    `user_id`   INT(10) UNSIGNED NOT NULL,
+    `item_id`   INT(10) UNSIGNED NOT NULL,
+    `item_type` ENUM('thread','reply') NOT NULL DEFAULT 'thread',
+    `vote_type` ENUM('up','down')      NOT NULL DEFAULT 'up',
+    `time`      DATETIME NOT NULL,
+    PRIMARY KEY (`vote_id`),
+    UNIQUE KEY `unique_vote` (`user_id`,`item_id`,`item_type`),
+    KEY `idx_item` (`item_id`,`item_type`)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+  "ALTER TABLE `forums_threads` ADD COLUMN IF NOT EXISTS `thread_votes_up`   INT(11) NOT NULL DEFAULT 0",
+  "ALTER TABLE `forums_threads` ADD COLUMN IF NOT EXISTS `thread_votes_down` INT(11) NOT NULL DEFAULT 0",
+  "ALTER TABLE `forums_replies` ADD COLUMN IF NOT EXISTS `reply_votes_up`    INT(11) NOT NULL DEFAULT 0",
+  "ALTER TABLE `forums_replies` ADD COLUMN IF NOT EXISTS `reply_votes_down`  INT(11) NOT NULL DEFAULT 0",
+  "ALTER TABLE `forums_threads` ADD COLUMN IF NOT EXISTS `thread_best_reply_id` INT(11) DEFAULT NULL",
 ];
 
 if ($do === 'migrate' || $do === 'all') {
@@ -70,14 +86,17 @@ if ($do === 'migrate' || $do === 'all') {
   echo empty($errs) ? " — all good\n" : " — " . count($errs) . " failed\n";
 
   echo "\n--- Verify ---\n";
-  foreach (['forums_moderation_log', 'forums_subscriptions'] as $t) {
+  foreach (['forums_moderation_log', 'forums_subscriptions', 'forums_votes'] as $t) {
     $r = $db->query("SHOW TABLES LIKE '$t'");
     echo ($r && $r->num_rows > 0 ? "EXISTS " : "MISSING") . ": $t\n";
   }
   foreach ([
     ['forums_threads', 'thread_pinned'],
     ['forums_threads', 'thread_locked'],
+    ['forums_threads', 'thread_votes_up'],
+    ['forums_threads', 'thread_best_reply_id'],
     ['forums_replies', 'reply_is_answer'],
+    ['forums_replies', 'reply_votes_up'],
   ] as [$tbl, $col]) {
     $r = $db->query("SHOW COLUMNS FROM `$tbl` LIKE '$col'");
     echo ($r && $r->num_rows > 0 ? "EXISTS " : "MISSING") . ": $tbl.$col\n";
