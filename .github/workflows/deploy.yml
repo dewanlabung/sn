@@ -20,7 +20,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd "${{ secrets.DEPLOY_PATH }}"
+            DEPLOY_PATH=$(printf '%s' '${{ secrets.DEPLOY_PATH }}' | tr -d '\r\n' | xargs)
+            cd "$DEPLOY_PATH"
             git fetch origin main
             git reset --hard origin/main
 
